@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}">
+<title>Statistic</title>
+{% endblock %}
+
+{% block body %}
+<div class="container">
+    <h1>Statistic about your inputs dataset</h1>
+    <p>sparsity of given dataset is {{sparsity}}</p>
+
+    <div>
+        <p>in this graph we can see sparsity of matrix</p>
+        <picture>
+            <source srcset="static/img/sparsity.png" media="all">
+            <img src="">
+          </picture>
+    </div>
+
+    <div>
+        <p>in this graph we can see how many items rated how many users and how many users rated item</p>
+        <picture>
+            <source srcset="static/img/all.png" width="1500" heigth="1500">
+            <img src="">
+          </picture>
+    </div>
+
+    <div>
+        <p>in this graph we can see how many users rated item all</p>
+        <picture>
+            <source srcset="static/img/reduced.png" width="1500" heigth="1500">
+            <img src="">
+          </picture>
+    </div>
+
+    <div>
+        <p>in this graph we can see scatter how users rated items</p>
+        <picture>
+            <source srcset="static/img/scatter.png" >
+            <img src="">
+          </picture>
+    </div>
+    
+
+ 
+   
+</div>
+
+
+
+{% endblock %}

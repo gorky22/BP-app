@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/statistic.css') }}">
+<title>Upload file</title>
+{% endblock %}
+
+{% block body %}
+<div class="cont">
+
+        <form action="/get_statistic" method="get">
+            <button type="submit" class="show btn btn-primary">get stats about dataset</button>
+        </form>
+        
+   
+</div>
+
+{% endblock %}
