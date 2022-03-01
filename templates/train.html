@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<title>Upload file</title>
+{% endblock %}
+
+{% block body %}
+
+<div class="content">
+
+    <h1>please choose which algorithm you want train your model with, or you want to find best solution</h1>
+
+    <div class="btn-group" role="group" aria-label="Basic example">
+        <form  action="train_model" method="post" >
+            <button type="submit" class="show btn btn-primary" name="type" value="sgd">SGD</button>
+
+            <button type="submit" class="show btn btn-primary" name="type" value="svd">SVD</button>
+ 
+    
+
+            <button type="submit" class="show btn btn-primary" name="type" value="als">ALS</button>
+
+
+            <button type="submit" class="show btn btn-primary" name="type" value="all">ALL</button>
+        </form>
+      </div>
+
+    
+</div>
+{% endblock %}

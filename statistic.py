@@ -306,18 +306,36 @@ class DataSet:
         if alg == "all" or alg == "sgd":
             self.__times = []
             opt = self.optimizer()
-            self.__values_sgd = [dict(opt.res[i], **{'time':self.__times[i]}) for i in range(len(opt))]
+            self.__values_sgd = [dict(opt.res[i], **{'time':self.__times[i]}) for i in range(len(opt.res))]
+            min = self.min_d(self.__values_sgd)
+            min["alg"] = "svg"
         
         if alg == "all" or alg == "als":
             self.__times = []
             opt = self.optimizer(alg="als")
-            self.__values_als = [dict(opt.res[i], **{'time':self.__times[i]}) for i in range(len(opt))]
-        
-        if alg == "all" or alg == "svd":
+            self.__values_als = [dict(opt.res[i], **{'time':self.__times[i]}) for i in range(len(opt.res))]
+            if "min" in locals():
+                tmp_min = self.min_d(self.__values_als)
+                tmp_min["alg"] = "als"
+                if min["target"] < tmp_min["target"]:
+                    min = tmp_min
+            else:
+                min = self.min_d(self.__values_als)
+                min["alg"] = "als"
 
+        if alg == "all" or alg == "svd":
             self.__times = []
             opt = self.optimizer(alg="svd")
-            self.__values_svd = [dict(opt.res[i], **{'time':self.__times[i]}) for i in range(len(opt))]
+            self.__values_svd = [dict(opt.res[i], **{'time':self.__times[i]}) for i in range(len(opt.res))]
+            if "min" in locals():
+                tmp_min =  self.min_d(self.__values_svd)
+                tmp_min["alg"] = "svd"
+                if min["target"] < tmp_min["target"]:
+                    min = tmp_min
+            else:
+                min =  self.min_d(self.__values_svd)
+                min["alg"] = "svd"
+        return min
     
     def __plot_methods(self, to_plot, type="k", ax=None):
 
@@ -347,10 +365,10 @@ class DataSet:
         ax.legend()
 
 
-    def __call_plots_methods(self, to_plot=None, evaluations=False, lr=False, time=False):
+    def __call_plots_methods(self, to_plot=None, evaluations=False, lr=False, time=False, save_path=None):
         
         what_plot = []
-
+        min = None
         if lr:
             what_plot.append({'type':"learning_rate"})
         if evaluations:
@@ -362,14 +380,18 @@ class DataSet:
         figure, axes = plt.subplots(
                             nrows=1, ncols=len(what_plot), constrained_layout=True,
                             figsize=(10, 5)
-                            )        
+                            )  
+          
         for i in range(0, len(what_plot)):
             self.__plot_methods(to_plot=to_plot, type=what_plot[i]["type"], ax=axes[i])
+
+        if save_path != None:
+            plt.savefig(save_path)
 
 
     def graphs_alghoritms(self, all=False, sgd=False, svd=False, als=False,
                           values_sgd = None, values_als = None, values_svd = None,
-                          eval=False, lr=False, time=False):
+                          eval=False, lr=False, time=False, save_path=None):
 
         to_plot = []
     
@@ -406,10 +428,47 @@ class DataSet:
         
             to_plot.append({"alg":"sgd","data":values_sgd})
 
-        self.__call_plots_methods(to_plot=to_plot,evaluations=eval, lr=lr, time=time)
+        self.__call_plots_methods(to_plot=to_plot,evaluations=eval, lr=lr, time=time, save_path=save_path)
 
+    def min_d(self, dic):
+        min = 1000
+        min_d = None
+        for it in dic:
+            if min > it["target"]:
+                min = it["target"]
+                min_d = it
+
+        return min_d
+
+    def train_model_svd(self, lr=0.0005, steps=10):
         
+        algo = SVD(n_epochs=steps, lr_all=lr)
+        return algo.fit(self.dataset)
+
+
+    def train_model_als(self, lr=0.0005, steps=10):
         
+        bsl_options = {'method': 'als',
+                        'learning_rate': lr,
+                        'n_epochs': steps,
+        }
+               
+        algo = BaselineOnly(bsl_options=bsl_options)
+        
+        algo = SVD(n_epochs=steps, lr_all=lr)
+        
+        return algo.fit(self.dataset)
+    
+    def train_model_sgd(self, lr=0.0005, steps=10):
+
+        bsl_options = {'method': 'sgd',
+                        'learning_rate': lr,
+                        'n_epochs': steps,
+        }
+        
+        algo = SVD(n_epochs=steps, lr_all=lr)
+
+        return algo.fit(self.dataset)
 
         
 

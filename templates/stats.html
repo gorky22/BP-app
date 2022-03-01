@@ -8,12 +8,12 @@
 {% block body %}
 <div class="container">
     <h1>Statistic about your inputs dataset</h1>
-    <p>sparsity of given dataset is {{sparsity}}</p>
+    <p>sparsity of given dataset is {{x.sparsity}}</p>
 
     <div>
         <p>in this graph we can see sparsit of matrix</p>
         <picture>
-            <source srcset="static/img/sparsity.png" media="all">
+            <source srcset={{x.path_img_stats_sparsity}} media="all">
             <img src="">
           </picture>
     </div>
@@ -21,7 +21,7 @@
     <div>
         <p>in this graph we can see how many items rated how many users and how many users rated item</p>
         <picture>
-            <source srcset="static/img/all.png" width="1500" heigth="1500">
+            <source srcset={{x.path_img_stats_all}} width="1500" heigth="1500">
             <img src="">
           </picture>
     </div>
@@ -29,7 +29,7 @@
     <div>
         <p>in this graph we can see how many users rated item all</p>
         <picture>
-            <source srcset="static/img/reduced.png" width="1500" heigth="1500">
+            <source srcset={{x.path_img_stats_reduced}} width="1500" heigth="1500">
             <img src="">
           </picture>
     </div>
@@ -37,7 +37,7 @@
     <div>
         <p>in this graph we can see scatter how users rated items</p>
         <picture>
-            <source srcset="static/img/scatter.png" >
+            <source srcset={{x.path_img_stats_scatter}} >
             <img src="">
           </picture>
     </div>
