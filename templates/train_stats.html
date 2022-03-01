@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
+
 <link rel="stylesheet" href="{{ url_for('static', filename='css/train.css') }}">
 <title>Upload file</title>
 {% endblock %}
@@ -9,7 +10,7 @@
 
 <div class="content">
 
-    <h1>Results of trainig</h1>
+    <h1 class="txt">Results of trainig</h1>
 
     <ul class="list-group">
         <li class="list-group-item active">minumal RMSE was {{x.train_rmse}}</li>

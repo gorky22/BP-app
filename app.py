@@ -12,6 +12,7 @@ import pandas as pd
 import matplotlib
 import pickle
 matplotlib.use('Agg')
+import surprise
 
 app = Flask(__name__)
 
@@ -152,7 +153,7 @@ def get_statistic():
         print("tu2")
         x.sparsity = '{:.2f}%'.format(dataset.sparsity())
         print("tu3")
-        name = x.path_to_file.split("datasets/")[1].split(".")[0] + str(x._id) + ".png"
+        name = x.path_to_file.split("datasets/")[1].split(".")[0] + ".png"
         print("tu4")
         x.path_img_stats_all = "static/img/all_" + name
         x.path_img_stats_reduced = "static/img/reduced_" + name
@@ -207,7 +208,7 @@ def find_hyperparams():
         print(min)
         
 
-        path = x.path_to_file.split("datasets/")[1].split(".")[0] + str(x._id) + ".png"
+        path = x.path_to_file.split("datasets/")[1].split(".")[0] + ".png"
         x.path_train_graph = "static/train_img/train_" + path
         x.train_steps = min["params"]['k']
         x.train_lr = min["params"]["learning_rate"]
@@ -243,20 +244,23 @@ def train_model():
 
         alg = request.form.get("alg")
 
-        path = x.path_to_file.split("datasets/")[0] + x.path_to_file.split("datasets/")[1].split(".")[0] + str(x._id) + "-" + alg + "_pkl"
-
+        path = x.path_to_file.split("datasets/")[0] + "models/" + x.path_to_file.split("datasets/")[1].split(".")[0] + "-" + alg + "_pkl"
+        print(path)
         if not "dataset" in globals():
             dataset = DataSet(dataset=pd.read_pickle(x.path_to_file),
                                 user=x.user_row,item=x.item_row,
                                 rating=x.rating)
+
+        lr = float(request.form.get("lr"))
+
         if alg == "svd":
-            model = dataset.train_model_svd(lr=request.form.get("lr"), steps=request.form.get("steps"))
+            model = dataset.train_model_svd(lr=lr, steps=int(request.form.get("steps")))
             x.path_to_model_svd = path
         elif alg == "sgd":
-            model = dataset.train_model_sgd(lr=request.form.get("lr"), steps=request.form.get("steps"))
+            model = dataset.train_model_sgd(lr=lr, steps=int(request.form.get("steps")))
             x.path_to_model_sgd = path
         else:
-            model = dataset.train_model_als(lr=request.form.get("lr"), steps=request.form.get("steps"))
+            model = dataset.train_model_als(lr=lr, steps=int(request.form.get("steps")))
             x.path_to_model_als = path
 
         with open(path, 'wb') as files:

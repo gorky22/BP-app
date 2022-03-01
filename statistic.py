@@ -1,3 +1,4 @@
+from venv import create
 import pandas as pd
 import matplotlib as plt
 from matplotlib import pyplot as plt
@@ -38,6 +39,7 @@ class DataSet:
     __values_svd = None
     __values_als = None
     __values_sgd = None
+    __surprise_dataset = None
 
     def __init__(self, dataset, user, item, rating):
 
@@ -294,14 +296,11 @@ class DataSet:
         
     def find_hyperparams(self, alg="sgd", rating_from=0.0, rating_to=5.0):
 
-        reader = Reader(rating_scale=(rating_from,rating_to))
-
-        self.dataset = self.dataset[["user_id", "item_id", "rating"]]
-
-        data = Dataset.load_from_df(df=self.dataset, reader=reader)
+        if self.__surprise_dataset == None:
+            self.__create_sp_dtst()
 
         if self.__train == None or self.__test == None:
-            self.__train, self.__test = train_test_split(data, 0.1)
+            self.__train, self.__test = train_test_split(self.__surprise_dataset, 0.1)
 
         if alg == "all" or alg == "sgd":
             self.__times = []
@@ -442,8 +441,13 @@ class DataSet:
 
     def train_model_svd(self, lr=0.0005, steps=10):
         
+        if self.__surprise_dataset == None:
+            self.__create_sp_dtst()
+
+        train = self.__surprise_dataset.build_full_trainset()
+
         algo = SVD(n_epochs=steps, lr_all=lr)
-        return algo.fit(self.dataset)
+        return algo.fit(train)
 
 
     def train_model_als(self, lr=0.0005, steps=10):
@@ -452,23 +456,38 @@ class DataSet:
                         'learning_rate': lr,
                         'n_epochs': steps,
         }
-               
+        
         algo = BaselineOnly(bsl_options=bsl_options)
-        
-        algo = SVD(n_epochs=steps, lr_all=lr)
-        
-        return algo.fit(self.dataset)
+
+        if self.__surprise_dataset == None:
+            self.__create_sp_dtst()
+
+        train = self.__surprise_dataset.build_full_trainset()
+
+        return algo.fit(trainset=train)
     
     def train_model_sgd(self, lr=0.0005, steps=10):
+
 
         bsl_options = {'method': 'sgd',
                         'learning_rate': lr,
                         'n_epochs': steps,
         }
         
-        algo = SVD(n_epochs=steps, lr_all=lr)
+        algo = BaselineOnly(bsl_options=bsl_options)
 
-        return algo.fit(self.dataset)
+        if self.__surprise_dataset == None:
+            self.__create_sp_dtst()
+
+        train = self.__surprise_dataset.build_full_trainset()
+
+        return algo.fit(trainset=train)
+    
+    def __create_sp_dtst(self):
+        reader = Reader(rating_scale=(self.dataset["rating"].min(),self.dataset["rating"].max()))
+        self.dataset = self.dataset[["user_id", "item_id", "rating"]]
+        self.__surprise_dataset = Dataset.load_from_df(df=self.dataset, reader=reader)
+
 
         
 
