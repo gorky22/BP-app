@@ -5,5 +5,31 @@
 {% endblock %}
 
 {% block body %}
-<h1>Vitajte </h1>
+<div class="container">
+    <h1>Welcome select please dataset which you want analyze or add one</h1>
+    <div class="content">
+        <form action="/choose_dataset" method="post">
+        {% for item in x %}
+
+            <button type="submit" name="dataset" value={{item.name}} class="btn btn-primary">{{item.name}}</button>
+
+        {% endfor %}
+        </form>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                <span class="{{ category }}">{{ message }}</span>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">ok</span>
+                </button>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+    
+</div>
+
 {% endblock %}

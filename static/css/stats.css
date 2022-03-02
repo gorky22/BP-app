@@ -2,3 +2,7 @@
     text-align: center;
 
 }
+
+.pct {
+    max-width: 100%;
+}

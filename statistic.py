@@ -40,11 +40,22 @@ class DataSet:
     __values_als = None
     __values_sgd = None
     __surprise_dataset = None
+    __name_and_id_item = None
 
-    def __init__(self, dataset, user, item, rating):
+    def __init__(self, dataset, user, item, rating, name=None, dataset_names=None):
+        
+        if dataset_names is not None:
+            tmp = dataset_names.rename(columns={item:"item_id", name:"name"})
+            self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating"})
+            self.__name_and_id_item = pd.merge(self.dataset, tmp, how="left", on="name")[["item_id","name","rating"]]
+        elif name is not None:
+            self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating", name:"name"})
+            self.__name_and_id_item = self.dataset[["item_id","name","rating"]]
+        else :
+            self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating"})
+        
 
-        self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating"})
-
+        
 
     # this function returns matrix from dataset in coo format
 
@@ -94,9 +105,9 @@ class DataSet:
         x,y = self.__interaction_matrix.T.shape
 
         plt.figure(figsize=(x/500, y/500))
-
+        
         plt.gca().set_aspect('auto', adjustable='box')
-        plt.spy(self.__interaction_matrix.T,markersize=0.009,precision = 0.1)
+        plt.spy(self.__interaction_matrix.T,markersize=0.09)
         plt.xlabel("id of users")
         plt.ylabel("id of items")
         
@@ -488,7 +499,10 @@ class DataSet:
         self.dataset = self.dataset[["user_id", "item_id", "rating"]]
         self.__surprise_dataset = Dataset.load_from_df(df=self.dataset, reader=reader)
 
-
+    def get_items(self):
+        if self.__name_and_id_item is not None:
+            x = self.dataset.groupby("item_id").count()
+            return x.loc[x["rating"] > 10].reset_index()["item_id","name"]
         
 
 

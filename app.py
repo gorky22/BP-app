@@ -27,8 +27,10 @@ class datasets(db.Model):
     name = db.Column("name", db.String(100))
     user_row = db.Column("user_row", db.String(100))
     item_row = db.Column("item_row", db.String(100))
+    names_row = db.Column("names_row", db.String(100))
     rating = db.Column("rating", db.String(100))
     path_to_file = db.Column("path_to_file", db.String(100))
+    pkl_path_to_file_names = db.Column("pkl_path_to_file_names", db.String(100))
     sparsity = db.Column("sparsity", db.String(100))
     path_img_stats_all = db.Column("path_img_stats_all", db.String(200))
     path_img_stats_reduced = db.Column("path_img_stats_reduced", db.String(200))
@@ -42,6 +44,9 @@ class datasets(db.Model):
     path_to_model_sgd = db.Column("path_to_model_sgd", db.String(200))
     path_to_model_als = db.Column("path_to_model_als", db.String(200))
 
+app.config["uploads_dataset"] = "/Users/damiangorcak/Desktop/BP-app/static/datasets"
+app.config['SECRET_KEY'] = 'anystringthatyoulike'
+
 db.create_all()
 global dataset
 global sparsity
@@ -54,26 +59,81 @@ def index():
 
 @app.route("/main")
 def main():
-    return render_template("main.html")
+    x = datasets.query.all()
+    return render_template("main.html",x=x)
 
+@app.route("/choose_dataset", methods=["POST"])
+def choose_dataset():
+    print(request.form['dataset'])
+    session["df"] = request.form['dataset']
+    print(session["df"])
+    print(session.get("df"))
+    flash(u'dataset is chosen', 'ok')
+    x = datasets.query.all()
+    print(session["df"])
+    return render_template("main.html",x=x)
 
-app.config["uploads_dataset"] = "/Users/damiangorcak/Desktop/BP-app/static/datasets"
-app.config['SECRET_KEY'] = 'anystringthatyoulike'
+def save_file(file,name,main=False):
+    if "csv" in file.content_type or "json" in file.content_type:
+        if main:
+            file.save(app.config["uploads_dataset"] + "/names_" + name )
+            return app.config["uploads_dataset"] + "/names_" + name 
+        else:
+            file.save(os.path.join(app.config["uploads_dataset"], name))
+            return os.path.join(app.config["uploads_dataset"], name)
+    else:
+        return None
+
+def get_df_and_check_columns(content_type,path_to_file,user_col=None,item_col=None,rating_col=None,names_col=None):
+    if "csv" in content_type:
+        df = pd.read_csv(path_to_file)
+    else:
+        df = pd.read_json(path_to_file, lines=True)
+
+    if names_col == None:
+
+        if  not all(x in list(df.columns) for x in [user_col, item_col, rating_col]):
+            return None
+        else :
+            return df
+    
+    else:
+
+        if user_col == None:
+            if  not all(x in list(df.columns) for x in [names_col]):
+                return None
+            else :
+                return df
+        else:
+
+            if  not all(x in list(df.columns) for x in [user_col, item_col, rating_col,names_col]):
+                return None
+            else :
+                return df
+        
+
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
+    db.drop_all()
+    db.create_all()
     if request.method == "POST":
         print("here")
         if request.files:
-            #db.drop_all()
-            #db.create_all()
+            
             file = request.files["file"]
             user_col = request.form.get("user_id")
             item_col = request.form.get("item_id")
             rating_col = request.form.get("rating")
+            names_col = request.form.get("item_names")
+            file_names = request.form.get("file_names")
 
-            print(user_col,item_col,rating_col)
-            new = datasets(user_row=user_col, item_row=item_col, rating=rating_col)
+            if file_names is not None and names_col is None:
+                flash(u'dataset s menami zadany ale nazov stlpca s menami nieje zadany', 'error')
+                return render_template("upload.html")
+
+            print(user_col,item_col,rating_col,names_col)
+            new = datasets(user_row=user_col, item_row=item_col, rating=rating_col, names_row=names_col)
 
             db.session.add(new)
             db.session.commit()
@@ -82,36 +142,56 @@ def upload():
 
             db.session.commit()
             
-            if "csv" in file.content_type or "json" in file.content_type:
-                file.save(os.path.join(app.config["uploads_dataset"], new.name))
-                path_to_file = os.path.join(app.config["uploads_dataset"], new.name)
+            path_to_file = save_file(file,new.name,main=True)
+            path_to_file_names = None
+            df_names = None
 
-                if "csv" in file.content_type:
-                    df = pd.read_csv(path_to_file)
-                else:
-                    df = pd.read_json(path_to_file)
+            if file_names is not None:
+                path_to_file_names = save_file(file_names,new.name,main=True)
 
-                if  not all(x in list(df.columns) for x in [user_col, item_col, rating_col]):
-                    flash(u'zadane stlpce niesu v zadanom datasete', 'error')
+                if path_to_file_names is None:
+                    flash(u'data s menami niesu ani v json ani v csv formate', 'error')
+                    return render_template("upload.html")
+                
+                df_names = get_df_and_check_columns(file_names.content_type,path_to_file=path_to_file_names,names_col=names_col)
+
+                if df_names is None:
+                    flash(u'zadane stlpce (dataset s menami) niesu v zadanom datasete', 'error')
                     return render_template("upload.html")
 
-                pkl_path = path_to_file.split(".")[0] + ".pkl"
-
-                df.to_pickle(pkl_path)
-                
-                flash(u'data uspesne ulozene', 'ok')
-            else: 
+            if path_to_file is None :
                 flash(u'data niesu ani v json ani v csv formate', 'error')
                 return render_template("upload.html")
 
+            if df_names is not None:
+                df = get_df_and_check_columns(file.content_type,path_to_file=path_to_file,user_col=user_col,item_col=item_col,rating_col=rating_col,names_col=names_col)
+            else:
+                df = get_df_and_check_columns(file.content_type,path_to_file=path_to_file,user_col=user_col,item_col=item_col,rating_col=rating_col)
+
+            if df is None:
+                flash(u'zadane stlpce niesu v zadanom datasete', 'error')
+                return render_template("upload.html")
+
+            pkl_path = path_to_file.split(".")[0] + ".pkl"
+
+            df.to_pickle(pkl_path)
+
+            if df_names is not None:
+                
+                pkl_path_names = "names_" + path_to_file.split(".")[0] + ".pkl"
+
+                df_names.to_pickle(pkl_path_names)
+
+                new.pkl_path_to_file_names = pkl_path_names
+            
+            flash(u'data uspesne ulozene', 'ok')
+
             new.path_to_file = pkl_path
 
-            db.session.commit()
-
-            
+            db.session.commit() 
             
             global dataset 
-            dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col)
+            #dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col)
             session["df"] = new.name
             
 
@@ -123,8 +203,8 @@ def upload():
 
 @app.route("/statistic")
 def statistic():
-
-    if session["df"] == None:
+    print(session.get("df"))
+    if session.get("df") is None:
         return render_template("empty.html")
     else:
         x = datasets.query.filter_by(name=session["df"]).all()[0]
@@ -180,7 +260,7 @@ def get_statistic():
 
 @app.route("/train")
 def train():
-    if session["df"] == None:
+    if session.get("df") is None:
         return render_template("empty.html")
     else:
         x = datasets.query.filter_by(name=session["df"]).all()[0]
@@ -233,12 +313,13 @@ def find_hyperparams():
 
 @app.route("/train_model", methods=["GET","POST"])
 def train_model():
+
+    if session.get("df") is None:
+        return render_template("empty.html")
+
     if request.method == "POST":
 
-        if session["df"] == None:
-            return render_template("empty.html")
-        else:
-            x = datasets.query.filter_by(name=session["df"]).all()[0]
+        x = datasets.query.filter_by(name=session["df"]).all()[0]
         
         global dataset
 
@@ -267,6 +348,20 @@ def train_model():
             pickle.dump(model, files)
        
     return render_template("train_model.html")
+
+@app.route("/recomend")
+def recomend():
+    if session.get("df") is None:
+        return render_template("empty.html")
+    else:
+        x = datasets.query.filter_by(name=session["df"]).all()[0]
+        global dataset
+        if not "dataset" in globals():
+            dataset = DataSet(dataset=pd.read_pickle(x.path_to_file),
+                                user=x.user_row,item=x.item_row,
+                                rating=x.rating)
+        data= dataset.get_items()
+    return render_template("recomend.html",data=data)
 
 
 
