@@ -2,3 +2,21 @@
   width: 100%;
   text-align: center;
 }
+
+.slider {
+  background-color: aliceblue;
+  margin-bottom: 1%;
+}
+
+.form-range {
+  width: 90%;
+  padding-top: 1%;
+}
+
+.output {
+  width: 7.5%;
+}
+
+.send_btn {
+  margin-left: 90%;
+}

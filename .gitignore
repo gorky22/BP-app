@@ -1,3 +1,8 @@
 static/img
 static/datasets
 __pycache__
+static/img
+static/models
+static/train_img
+datasets.sqlite3
+movie_item.zip

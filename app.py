@@ -13,6 +13,7 @@ import matplotlib
 import pickle
 matplotlib.use('Agg')
 import surprise
+import json
 
 app = Flask(__name__)
 
@@ -115,8 +116,8 @@ def get_df_and_check_columns(content_type,path_to_file,user_col=None,item_col=No
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
-    db.drop_all()
-    db.create_all()
+    #db.drop_all()
+    #db.create_all()
     if request.method == "POST":
         print("here")
         if request.files:
@@ -126,8 +127,8 @@ def upload():
             item_col = request.form.get("item_id")
             rating_col = request.form.get("rating")
             names_col = request.form.get("item_names")
-            file_names = request.form.get("file_names")
-
+            file_names = request.files["file_names"]
+            global dataset 
             if file_names is not None and names_col is None:
                 flash(u'dataset s menami zadany ale nazov stlpca s menami nieje zadany', 'error')
                 return render_template("upload.html")
@@ -142,7 +143,7 @@ def upload():
 
             db.session.commit()
             
-            path_to_file = save_file(file,new.name,main=True)
+            path_to_file = save_file(file,new.name)
             path_to_file_names = None
             df_names = None
 
@@ -163,10 +164,12 @@ def upload():
                 flash(u'data niesu ani v json ani v csv formate', 'error')
                 return render_template("upload.html")
 
-            if df_names is not None:
+            if df_names is None:
                 df = get_df_and_check_columns(file.content_type,path_to_file=path_to_file,user_col=user_col,item_col=item_col,rating_col=rating_col,names_col=names_col)
+                dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col, name=names_col)
             else:
                 df = get_df_and_check_columns(file.content_type,path_to_file=path_to_file,user_col=user_col,item_col=item_col,rating_col=rating_col)
+                dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col)
 
             if df is None:
                 flash(u'zadane stlpce niesu v zadanom datasete', 'error')
@@ -178,20 +181,23 @@ def upload():
 
             if df_names is not None:
                 
-                pkl_path_names = "names_" + path_to_file.split(".")[0] + ".pkl"
+                pkl_path_names =  path_to_file.split(".")[0] + "_names.pkl"
 
                 df_names.to_pickle(pkl_path_names)
 
                 new.pkl_path_to_file_names = pkl_path_names
+
+                dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col,name=names_col,dataset_names=df_names)
             
             flash(u'data uspesne ulozene', 'ok')
 
             new.path_to_file = pkl_path
 
+
             db.session.commit() 
             
-            global dataset 
-            #dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col)
+            
+            
             session["df"] = new.name
             
 
@@ -215,6 +221,30 @@ def statistic():
         else:
             return render_template("statistic.html")
 
+def make_dataset(x):
+    global dataset
+
+    if x.pkl_path_to_file_names is not None:
+                dataset = DataSet(dataset=pd.read_pickle(x.path_to_file),
+                                user=x.user_row,
+                                item=x.item_row,
+                                rating=x.rating,
+                                name=x.names_row,
+                                dataset_names=pd.read_pickle(x.pkl_path_to_file_names))
+
+    elif x.names_row is not None:
+        dataset = DataSet(dataset=pd.read_pickle(x.path_to_file),
+                                user=x.user_row,
+                                item=x.item_row,
+                                rating=x.rating,
+                                name=x.names_row)
+
+    else:
+        dataset = DataSet(dataset=pd.read_pickle(x.path_to_file),
+                                user=x.user_row,
+                                item=x.item_row,
+                                rating=x.rating)
+
 @app.route("/get_statistic", methods=["GET"])
 def get_statistic():
     global dataset
@@ -226,10 +256,7 @@ def get_statistic():
         print(x.path_to_file)
         print(x.item_row)
         if not "dataset" in globals():
-            dataset = DataSet(dataset=pd.read_pickle(x.path_to_file),
-                            user=x.user_row,
-                            item=x.item_row,
-                            rating=x.rating)
+            make_dataset(x)
         print("tu2")
         x.sparsity = '{:.2f}%'.format(dataset.sparsity())
         print("tu3")
@@ -280,9 +307,7 @@ def find_hyperparams():
     if request.method == "POST":
         print("hello")
         if not "dataset" in globals():
-            dataset = DataSet(dataset=pd.read_pickle(x.path_to_file),
-                                user=x.user_row,item=x.item_row,
-                                rating=x.rating)
+            make_dataset(x)
 
         min = dataset.find_hyperparams(alg=request.form.get("type"))
         print(min)
@@ -328,9 +353,7 @@ def train_model():
         path = x.path_to_file.split("datasets/")[0] + "models/" + x.path_to_file.split("datasets/")[1].split(".")[0] + "-" + alg + "_pkl"
         print(path)
         if not "dataset" in globals():
-            dataset = DataSet(dataset=pd.read_pickle(x.path_to_file),
-                                user=x.user_row,item=x.item_row,
-                                rating=x.rating)
+            make_dataset(x)
 
         lr = float(request.form.get("lr"))
 
@@ -357,11 +380,28 @@ def recomend():
         x = datasets.query.filter_by(name=session["df"]).all()[0]
         global dataset
         if not "dataset" in globals():
-            dataset = DataSet(dataset=pd.read_pickle(x.path_to_file),
-                                user=x.user_row,item=x.item_row,
-                                rating=x.rating)
+            make_dataset(x)
         data= dataset.get_items()
+        print(data)
     return render_template("recomend.html",data=data)
+
+
+@app.route("/make_recomendation",  methods=["GET","POST"])
+def make_recomendation():
+
+    if session.get("df") is None:
+        return render_template("empty.html")
+    else:
+        x = datasets.query.filter_by(name=session["df"]).all()[0]
+        global dataset
+        if not "dataset" in globals():
+            make_dataset(x)
+        min,max,data= dataset.get_items()
+
+    if request.method == "POST" :
+        print(json.loads(request.form.get("btn")))
+    
+    return render_template("recomend.html",data=data, min=min, max=max)
 
 
 

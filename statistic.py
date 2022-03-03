@@ -47,7 +47,7 @@ class DataSet:
         if dataset_names is not None:
             tmp = dataset_names.rename(columns={item:"item_id", name:"name"})
             self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating"})
-            self.__name_and_id_item = pd.merge(self.dataset, tmp, how="left", on="name")[["item_id","name","rating"]]
+            self.__name_and_id_item = pd.merge(self.dataset, tmp, how="left", on="item_id")[["item_id","name","rating"]]
         elif name is not None:
             self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating", name:"name"})
             self.__name_and_id_item = self.dataset[["item_id","name","rating"]]
@@ -501,8 +501,12 @@ class DataSet:
 
     def get_items(self):
         if self.__name_and_id_item is not None:
-            x = self.dataset.groupby("item_id").count()
-            return x.loc[x["rating"] > 10].reset_index()["item_id","name"]
+            x = self.__name_and_id_item.groupby("item_id").count()
+            x = x.loc[x["rating"] > 5].reset_index()
+            
+            x = pd.merge(x, self.__name_and_id_item, how="right", on="item_id")
+            x = x.sample(n=100)
+            return self.dataset["rating"].min(),self.dataset["rating"].max(),x[["item_id", "name_y"]].values.tolist()
         
 
 
