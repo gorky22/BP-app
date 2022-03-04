@@ -17,8 +17,8 @@
         <a  class="x btn input-block-level">{{item[1]}}</a>
 
             <div class="row-xs-6">
-                <input type="range" class="form-range" id={{item[0]}} min={{min - 0.5}} max={{max}} step="0.5" value={{min - 0.5}} 
-                                onchange="myFunction(this.value,this.id)" 
+                <input type="range" class="form-range" id={{item[0]}} name="{{item[1]}}" min={{min - 0.5}} max={{max}} step="0.5" value={{min - 0.5}} 
+                                onchange="myFunction(this.value,this.id,this.name)" 
                                 oninput="(this.value == '{{min - 0.5}}' ) ? this.nextElementSibling.value = 'non rated' :this.nextElementSibling.value = this.value ">
                 <output class="btn btn-primary output" name ={{item[0]}} >non rated</output>
             </div>
@@ -34,11 +34,11 @@
 <script>
     var dict = {};
     var min = '{{min - 0.5}}'
-function myFunction(value,id) {
+function myFunction(value,id,name) {
         if (value == min) {
             delete dict[id];
         } else {
-            dict[id] = value
+            dict[id] = [name,value]
         }
 
 }

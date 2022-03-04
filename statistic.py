@@ -41,18 +41,21 @@ class DataSet:
     __values_sgd = None
     __surprise_dataset = None
     __name_and_id_item = None
+    __to_train = None
+    __user_id = None
 
     def __init__(self, dataset, user, item, rating, name=None, dataset_names=None):
         
         if dataset_names is not None:
             tmp = dataset_names.rename(columns={item:"item_id", name:"name"})
             self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating"})
-            self.__name_and_id_item = pd.merge(self.dataset, tmp, how="left", on="item_id")[["item_id","name","rating"]]
+            self.__name_and_id_item = pd.merge(self.dataset, tmp, how="left", on="item_id")[["user_id","item_id","name","rating"]]
         elif name is not None:
             self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating", name:"name"})
-            self.__name_and_id_item = self.dataset[["item_id","name","rating"]]
+            self.__name_and_id_item = self.dataset[["user_id","item_id","name","rating"]]
         else :
             self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating"})
+            self.__name_and_id_item = self.dataset
         
 
         
@@ -451,8 +454,11 @@ class DataSet:
         return min_d
 
     def train_model_svd(self, lr=0.0005, steps=10):
+
+        if self.__to_train is None:
+            return None
         
-        if self.__surprise_dataset == None:
+        if self.__surprise_dataset is None:
             self.__create_sp_dtst()
 
         train = self.__surprise_dataset.build_full_trainset()
@@ -462,6 +468,9 @@ class DataSet:
 
 
     def train_model_als(self, lr=0.0005, steps=10):
+
+        if self.__to_train is None:
+            return None
         
         bsl_options = {'method': 'als',
                         'learning_rate': lr,
@@ -470,7 +479,7 @@ class DataSet:
         
         algo = BaselineOnly(bsl_options=bsl_options)
 
-        if self.__surprise_dataset == None:
+        if self.__surprise_dataset is None:
             self.__create_sp_dtst()
 
         train = self.__surprise_dataset.build_full_trainset()
@@ -479,6 +488,8 @@ class DataSet:
     
     def train_model_sgd(self, lr=0.0005, steps=10):
 
+        if self.__to_train is None:
+            return None
 
         bsl_options = {'method': 'sgd',
                         'learning_rate': lr,
@@ -487,7 +498,7 @@ class DataSet:
         
         algo = BaselineOnly(bsl_options=bsl_options)
 
-        if self.__surprise_dataset == None:
+        if self.__surprise_dataset is None:
             self.__create_sp_dtst()
 
         train = self.__surprise_dataset.build_full_trainset()
@@ -496,17 +507,46 @@ class DataSet:
     
     def __create_sp_dtst(self):
         reader = Reader(rating_scale=(self.dataset["rating"].min(),self.dataset["rating"].max()))
-        self.dataset = self.dataset[["user_id", "item_id", "rating"]]
-        self.__surprise_dataset = Dataset.load_from_df(df=self.dataset, reader=reader)
+        tmp = self.__to_train[["user_id", "item_id", "rating"]]
+        self.__surprise_dataset = Dataset.load_from_df(df=tmp, reader=reader)
 
     def get_items(self):
         if self.__name_and_id_item is not None:
-            x = self.__name_and_id_item.groupby("item_id").count()
+            x = self.__name_and_id_item.groupby(["item_id","name"]).count()
             x = x.loc[x["rating"] > 5].reset_index()
-            
-            x = pd.merge(x, self.__name_and_id_item, how="right", on="item_id")
             x = x.sample(n=100)
-            return self.dataset["rating"].min(),self.dataset["rating"].max(),x[["item_id", "name_y"]].values.tolist()
+            
+            return self.dataset["rating"].min(), self.dataset["rating"].max(), x[["item_id", "name"]].values.tolist()
+
+    def make_dat_with_name(self, data_to_add):
+        if self.__user_id is None:
+            self.__user_id = self.__name_and_id_item["user_id"].max() + 1
+        if self.__to_train is None:
+            self.__to_train = self.__name_and_id_item
+
+        for key in data_to_add:
+            self.__to_train.loc[len(self.__to_train.index)] = [self.__user_id,key,data_to_add[key][0],data_to_add[key][1]]
+        
+        return "ok"
+
+    def predict(self,item_id=None, model=None):
+    
+        review_prediction = model.predict(uid=self.__user_id, iid=item_id)
+        return review_prediction.est
+
+    def tmp(self, model=None):
+    
+        x = self.get_items()[2]
+        tmp = []
+        for item in x:
+            review_prediction = model.predict(uid=self.__user_id, iid=item[0])
+            tmp.append(review_prediction.est)
+        
+        return tmp
+
+    
+
+    
         
 
 

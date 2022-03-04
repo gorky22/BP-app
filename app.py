@@ -359,13 +359,27 @@ def train_model():
 
         if alg == "svd":
             model = dataset.train_model_svd(lr=lr, steps=int(request.form.get("steps")))
+
+            if model is None:
+                return render_template("no_rewiews.html")
+
             x.path_to_model_svd = path
         elif alg == "sgd":
             model = dataset.train_model_sgd(lr=lr, steps=int(request.form.get("steps")))
+
+            if model is None:
+                return render_template("no_rewiews.html")
+
             x.path_to_model_sgd = path
         else:
             model = dataset.train_model_als(lr=lr, steps=int(request.form.get("steps")))
+
+            if model is None:
+                return render_template("no_rewiews.html")
+
             x.path_to_model_als = path
+
+        db.session.commit()
 
         with open(path, 'wb') as files:
             pickle.dump(model, files)
@@ -381,27 +395,33 @@ def recomend():
         global dataset
         if not "dataset" in globals():
             make_dataset(x)
-        data= dataset.get_items()
-        print(data)
-    return render_template("recomend.html",data=data)
+        min, max, data= dataset.get_items()
+
+    return render_template("recomend.html",min=min, max=max, data=data)
 
 
-@app.route("/make_recomendation",  methods=["GET","POST"])
+@app.route("/make_recomendation",  methods=["POST"])
 def make_recomendation():
 
     if session.get("df") is None:
         return render_template("empty.html")
     else:
+        print("1")
+        
         x = datasets.query.filter_by(name=session["df"]).all()[0]
         global dataset
         if not "dataset" in globals():
             make_dataset(x)
+        print(dataset.make_dat_with_name(json.loads(request.form.get("btn"))))
+        print("model:")
+        print(x.path_to_model_sgd)
+        model = pickle.load(open(x.path_to_model_sgd, 'rb'))
+        print("data: ")
+        print(dataset.tmp(model=model))
         min,max,data= dataset.get_items()
 
-    if request.method == "POST" :
-        print(json.loads(request.form.get("btn")))
-    
     return render_template("recomend.html",data=data, min=min, max=max)
+
 
 
 
