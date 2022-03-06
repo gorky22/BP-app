@@ -417,7 +417,7 @@ def make_recomendation():
         print(x.path_to_model_sgd)
         model = pickle.load(open(x.path_to_model_sgd, 'rb'))
         print("data: ")
-        print(dataset.tmp(model=model))
+        print(dataset.find_predictions(model=model))
         min,max,data= dataset.get_items()
 
     return render_template("recomend.html",data=data, min=min, max=max)

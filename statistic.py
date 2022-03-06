@@ -524,25 +524,31 @@ class DataSet:
         if self.__to_train is None:
             self.__to_train = self.__name_and_id_item
 
+        dict = {'user_id': [], 'item_id': [], 
+                'name': [], 'rating': []}
         for key in data_to_add:
-            self.__to_train.loc[len(self.__to_train.index)] = [self.__user_id,key,data_to_add[key][0],data_to_add[key][1]]
+            dict['user_id'].append(self.__user_id)
+            dict['item_id'].append(key)
+            dict['rating'].append(data_to_add[key][1])
+            dict['name'].append(data_to_add[key][0])
+            
+        tmp_df = pd.DataFrame(dict)
+        self.__to_train = pd.concat([self.__to_train, tmp_df], ignore_index = True, axis = 0)   
         
         return "ok"
 
-    def predict(self,item_id=None, model=None):
-    
-        review_prediction = model.predict(uid=self.__user_id, iid=item_id)
-        return review_prediction.est
+    def find_predictions(self, model=None):
+        user_reviews = self.__to_train.loc[self.__to_train["user_id"] == self.__user_id]["item_id"].to_list()
 
-    def tmp(self, model=None):
-    
-        x = self.get_items()[2]
-        tmp = []
-        for item in x:
-            review_prediction = model.predict(uid=self.__user_id, iid=item[0])
-            tmp.append(review_prediction.est)
-        
-        return tmp
+        without_user_reviews = self.__to_train[~self.__to_train["item_id"].isin(user_reviews)][["item_id","name"]].drop_duplicates()
+
+        without_user_reviews["predictions"] = without_user_reviews.apply(
+                            lambda row: model.predict(uid=self.__user_id,iid=row["item_id"]).est, axis=1)
+
+        without_user_reviews.to_pickle("predictions_pkl")
+        return without_user_reviews
+
+
 
     
 
