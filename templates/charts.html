@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<title>Upload file</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+{% endblock %}
+
+{% block body %}
+<div class="container" style="text-align: center;">
+   
+        <h1>Statistic about your inputs dataset</h1>
+        <p>sparsity of given dataset is {{x.sparsity}}</p>
+        <div class="row">
+            <p>in this graph we can see how many items rated how many users and how many users rated item</p>
+            <div class="col-xs-6" style="width:50%">
+                <canvas id="myChart" ></canvas>
+            </div>
+            <div class="col-xs-6" style="width:50%">
+                <canvas id="myChart2" ></canvas>
+            </div>
+        </div>
+        <div class="row">
+            <p>in this graph we can see how many items rated how many users and how many users rated item</p>
+            <div class="col-xs-6" style="width:50%">
+                <canvas id="myChart4" ></canvas>
+            </div>
+            <div class="col-xs-6" style="width:50%">
+                <canvas id="myChart5" ></canvas>
+            </div>
+        </div>
+        <div style="margin-top: 10%;">
+            <p>in this graph we can see scatter how users rated items</p>
+            <canvas id="myChart3" ></canvas>
+            <p>x</p>
+        </div>
+           
+       
+        </div>
+        
+        
+      
+ 
+    
+  </div>
+
+
+  <script>
+      let tmp = JSON.parse("{{ scatter }}")
+
+        let scatter = []
+        
+      for (var i = 0; i < tmp.length; i++) {
+        let tmp_dic = {}
+            tmp_dic["x"] = tmp[i][1]
+            tmp_dic["y"] = tmp[i][0]
+            scatter.push(tmp_dic)
+            }
+    console.log(scatter)
+const ctx = document.getElementById('myChart').getContext('2d');
+const myChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ["1", "2", "3-5", "6-9", "10-15", "15-29", "30-49", "50-99", "100-199", "200-499", "500-999", ">=1000"],
+        datasets: [{
+            label: 'number of rated items',
+            data: JSON.parse("{{ user_reduced }}"),
+            
+            borderWidth: 1
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'items'
+                    }
+            },
+
+            x: {
+                title: {
+                    display: true,
+                    text: 'Number of users rated item'
+                    }
+            }
+            
+        }
+    }
+});
+
+const ctx2 = document.getElementById('myChart2').getContext('2d');
+const myChart2 = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+        labels: ["1", "2", "3-5", "6-9", "10-15", "15-29", "30-49", "50-99", "100-199", "200-499", "500-999", ">=1000"],
+        datasets: [{
+            label: 'how many users',
+            data: JSON.parse("{{ item_reduced }}"),
+            
+            borderWidth: 1
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'number of users'
+                    }
+            },
+
+            x: {
+                title: {
+                    display: true,
+                    text: 'number of items'
+                    }
+            }
+            
+        }
+    }
+});
+
+
+
+
+
+
+const ctx4 = document.getElementById('myChart4').getContext('2d');
+const myChart4 = new Chart(ctx4, {
+    type: 'bar',
+    data: {
+        labels: JSON.parse("{{ user_all_item }}"),
+        datasets: [{
+            label: 'number of rated items',
+            data: JSON.parse("{{ user_all_user }}"),
+            
+            borderWidth: 1
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'items'
+                    }
+            },
+
+            x: {
+                title: {
+                    display: true,
+                    text: 'users id'
+                    }
+            }
+            
+        }
+    }
+});
+
+
+
+
+
+const ctx5 = document.getElementById('myChart5').getContext('2d');
+const myChart5 = new Chart(ctx5, {
+    type: 'bar',
+    data: {
+        labels: JSON.parse("{{ item_all_user }}"),
+        datasets: [{
+            label: 'number users',
+            data: JSON.parse("{{ item_all_item }}"),
+            
+            borderWidth: 1
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'number of users'
+                    }
+            },
+
+            x: {
+                title: {
+                    display: true,
+                    text: 'items id'
+                    }
+            }
+            
+        }
+    }
+});
+
+
+
+
+
+
+
+
+
+
+
+const data = {
+  datasets: [{
+    label: 'how many users rated rated',
+    data: scatter,
+    backgroundColor: 'rgb(255, 99, 132)'
+  }],
+};
+
+const ctx3 = document.getElementById('myChart3').getContext('2d');
+const myChart3 = new Chart(ctx3, {
+    type: 'scatter',
+    data: data,
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Number of ratings'
+                    }
+            },
+
+            x: {
+                title: {
+                    display: true,
+                    text: 'Number of users'
+                    }
+            }
+            
+        }
+    }
+});
+
+
+
+  </script>
+
+
+{% endblock %}

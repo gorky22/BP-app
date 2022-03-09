@@ -2,6 +2,7 @@
 
 {% block head %}
 <title>Upload file</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
 {% endblock %}
 
 {% block body %}
@@ -59,15 +60,55 @@
 
 
         <div>
-            <picture class="pct">
-                <source srcset={{path}}>
-                <img width="1000" height="500" src=>
-              </picture>
+          <canvas id="myChart" ></canvas>
         </div>
   
 
 
     
 </div>
+
+<script>
+  let x = "{{ ranges }}"
+
+  x = x.substring(1, x.length-1).split("&#34;")
+  x = x.filter(el => (el != "" && el != ", "))
+
+
+  const ctx = document.getElementById('myChart').getContext('2d');
+const myChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: x,
+        datasets: [{
+            label: 'num of items',
+            data:  JSON.parse("{{ values }}"),
+            
+            borderWidth: 1
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'predicted items - ranges'
+                    }
+            },
+
+            x: {
+                title: {
+                    display: true,
+                    text: 'range of ratings'
+                    }
+            }
+            
+        }
+    }
+});
+
+
+</script>
 
 {% endblock %}

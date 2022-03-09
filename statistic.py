@@ -19,6 +19,7 @@ import time
 from surprise import BaselineOnly
 from surprise import Dataset
 import math
+import json
 
 
 # in this function we can load datased and make some statistic
@@ -46,12 +47,12 @@ class DataSet:
     __name_and_id_item = None
     __to_train = None
     __user_id = None
-    __trained_result_dict = {"als":None, "sgd":None, "svd":None}
+    
 
-    def __init__(self, dataset, user, item, rating, name=None, dataset_names=None):
+    def __init__(self, dataset, user, item, rating, name=None, dataset_names=None, name_item_id_name=None):
         
         if dataset_names is not None:
-            tmp = dataset_names.rename(columns={item:"item_id", name:"name"})
+            tmp = dataset_names.rename(columns={name_item_id_name:"item_id", name:"name"})
             self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating"})
             self.__name_and_id_item = pd.merge(self.dataset, tmp, how="left", on="item_id")[["user_id","item_id","name","rating"]]
         elif name is not None:
@@ -60,6 +61,8 @@ class DataSet:
         else :
             self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating"})
             self.__name_and_id_item = self.dataset
+        
+        self.trained_result_dict = {"als":None, "sgd":None, "svd":None}
         
 
         
@@ -166,14 +169,17 @@ class DataSet:
         tmp = occurencies_item.reset_index().groupby('user_id').count().reset_index()
         tmp = tmp.rename(columns={"user_id": "number_of_ratings"})
 
-        ax = tmp.plot.scatter(x='item_id',y="number_of_ratings",c='number_of_ratings',
+        if path != None:
+
+            ax = tmp.plot.scatter(x='item_id',y="number_of_ratings",c='number_of_ratings',
                             cmap="RdYlGn",logy=True,s=2,sharex=False)
 
-        ax.set_xlabel("number of users")
-        ax.set_ylabel("number of ratings")
+            ax.set_xlabel("number of users")
+            ax.set_ylabel("number of ratings")
 
-        plt.savefig(path)
-    
+            plt.savefig(path)
+
+        return {"scatter":json.dumps([[a]+[b] for a,b in zip(tmp.number_of_ratings.to_list() ,tmp.item_id.to_list())])}
     # plot reduced
 
     def __plot_reduced(self, occurencies_user, occurencies_item, path):
@@ -183,15 +189,20 @@ class DataSet:
 
         user_ratings = occurencies_item.reset_index().groupby('user_id').count().reset_index()
         item_ratings = occurencies_user.reset_index().groupby('item_id').count().reset_index()
+        if path != None:
+            fig_all, ax_all = plt.subplots(
+                        nrows=1, ncols=2, constrained_layout=True, figsize=(30, 10)
+                    )
 
-        fig_all, ax_all = plt.subplots(
-                    nrows=1, ncols=2, constrained_layout=True, figsize=(30, 10)
-                )
+            user_ratings.plot.bar(ax=ax_all[0], x='user_id',y='item_id',logy=True)
+            item_ratings.plot.bar(ax=ax_all[1], x='item_id',y='user_id',logy=True)
 
-        user_ratings.plot.bar(ax=ax_all[0], x='user_id',y='item_id',logy=True)
-        item_ratings.plot.bar(ax=ax_all[1], x='item_id',y='user_id',logy=True)
+            plt.savefig(path)
 
-        plt.savefig(path)
+        return {"user_all":{"user":json.dumps(user_ratings.user_id.to_list()),
+                            "item":json.dumps(user_ratings.item_id.to_list())},
+                "item_all":{"user":json.dumps(item_ratings.user_id.to_list()),
+                            "item":json.dumps(item_ratings.item_id.to_list())}}
 
     # plot reduced
 
@@ -219,22 +230,26 @@ class DataSet:
         item_graph = item_ratings.groupby("item_id").sum("item_id")
         users_graph = user_ratings.groupby("user_id").sum("user_id")
 
-        # count percentage
+        if path != None:
 
-        users_graph['percentage'] = round(((users_graph.item_id / users_graph.item_id.sum()) * 100), 2)
-        item_graph['percentage'] = round(((item_graph.user_id / item_graph.user_id.sum()) * 100), 2)
+            # count percentage
 
-        fig, ax = plt.subplots(
-                    nrows=1, ncols=2, constrained_layout=True, figsize=(30, 10)
-                )
+            users_graph['percentage'] = round(((users_graph.item_id / users_graph.item_id.sum()) * 100), 2)
+            item_graph['percentage'] = round(((item_graph.user_id / item_graph.user_id.sum()) * 100), 2)
 
-        # here we plot 2 graphs first show how many users rated item
-        # in second how many books was rated by user
+            fig, ax = plt.subplots(
+                        nrows=1, ncols=2, constrained_layout=True, figsize=(30, 10)
+                    )
 
-        ax = DataSet.__set_text_on_slopes(ax, users_graph, item_graph)
+            # here we plot 2 graphs first show how many users rated item
+            # in second how many books was rated by user
 
-        plt.savefig(path)
+            ax = DataSet.__set_text_on_slopes(ax, users_graph, item_graph)
 
+            plt.savefig(path)
+
+        return {"item_reduced":json.dumps(item_graph.reset_index().user_id.to_list()),
+                "user_reduced":json.dumps(users_graph.reset_index().item_id.to_list())}
     # this function will print graph of statistic ratings
     # will save 5 graphs in jpg format
     # all -> save to rating_graphs/all.jpg and shows how many item rated each user
@@ -242,9 +257,9 @@ class DataSet:
     # scatter -> save to rating_graphs/rscatter.jpg and scatter how users rated
 
     def ratings_graph(self, all=False, scatter=False, reduced=False, 
-                    all_path="all.jpg",
-                    reduced_path="reduced.jpg",
-                    scatter_path="scatter.jpg"):
+                    all_path=None,
+                    reduced_path=None,
+                    scatter_path=None):
         
         # find how many users rated each book
         # also how many books was rated by each user
@@ -252,14 +267,20 @@ class DataSet:
         occurencies_user = self.dataset.groupby('user_id')["item_id"].count().sort_values(ascending=False)
         occurencies_item = self.dataset.groupby('item_id')["user_id"].count().sort_values(ascending=False)
 
+        if scatter and all and reduced:
+            tmp_dict = self.__plot_all(occurencies_user, occurencies_item, None)
+            tmp_dict.update(self.__plot_scatter(occurencies_item, None))
+            tmp_dict.update(self.__plot_reduced(occurencies_user, occurencies_item, None))
+            return tmp_dict
+
         if scatter:
-            self.__plot_scatter(occurencies_item, scatter_path)
+            return self.__plot_scatter(occurencies_item, scatter_path)
 
         if all:
-            self.__plot_all(occurencies_user, occurencies_item, all_path)
+            return self.__plot_all(occurencies_user, occurencies_item, all_path)
         
         if reduced:
-            self.__plot_reduced(occurencies_user, occurencies_item, reduced_path)
+            return self.__plot_reduced(occurencies_user, occurencies_item, reduced_path)
 
         # this function will find optimal hyperparameters for chosen algorhitm usin library bayes_opt
 
@@ -553,11 +574,15 @@ class DataSet:
 
         top_10 = [[a]+[b] for a,b in zip(top_10.name.to_list() ,top_10.predictions.to_list())]
 
+        rated_graph_ranges = json.dumps(rated.reset_index().predictions.astype("str").to_list())
+
+        rated_graph_values = json.dumps(rated.reset_index().name.to_list())
+
         rated = [[a]+[b] for a,b in zip(rated.reset_index().predictions.astype("str").to_list() ,rated.item_id.to_list())]
-        path = path.split("BP-app/")[1]
-        print(path)
-        self.__trained_result_dict[alg] = {"top_10":top_10,"rated":rated,"path":path}
-        print(self.__trained_result_dict[alg])
+        
+     
+        self.trained_result_dict[alg] = {"top_10":top_10,"rated":rated,"ranges":rated_graph_ranges,"values":rated_graph_values}
+        print(self.trained_result_dict[alg])
 
     def make_stats_predictions(self, dataset, filename):
         ranges = []
@@ -574,6 +599,7 @@ class DataSet:
             ranges.append(i)
 
         dataset["predictions"] = pd.cut(dataset.predictions, bins=ranges, right=False)
+
         dataset = dataset.groupby("predictions").count()
 
         ax = dataset.item_id.plot.bar()
@@ -587,10 +613,15 @@ class DataSet:
         return dataset
 
     def get_data_to_render_result(self, alg=None):
-        if self.__trained_result_dict[alg] is None:
+        if self.trained_result_dict[alg] is None:
             return None
         else:
-            return self.__trained_result_dict[alg]
+            return self.trained_result_dict[alg]
+
+    def save(self, file_handler):
+        with open(file_handler, 'wb') as pickle_file:
+            pickle.dump(self, pickle_file)
+        
 
 
     
