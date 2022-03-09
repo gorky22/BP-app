@@ -1,6 +1,8 @@
 from venv import create
 import pandas as pd
-import matplotlib as plt
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 from matplotlib import pyplot as plt
 import matplotlib.pylab as plt
 import matplotlib.colors as mcolors
@@ -16,6 +18,7 @@ from bayes_opt import BayesianOptimization
 import time
 from surprise import BaselineOnly
 from surprise import Dataset
+import math
 
 
 # in this function we can load datased and make some statistic
@@ -43,6 +46,7 @@ class DataSet:
     __name_and_id_item = None
     __to_train = None
     __user_id = None
+    __trained_result_dict = {"als":None, "sgd":None, "svd":None}
 
     def __init__(self, dataset, user, item, rating, name=None, dataset_names=None):
         
@@ -107,18 +111,16 @@ class DataSet:
 
         x,y = self.__interaction_matrix.T.shape
 
-        plt.figure(figsize=(x/500, y/500))
+        if x > 3000 and y > 3000:
+            plt.figure(figsize=(x/500, y/500))
         
-        plt.gca().set_aspect('auto', adjustable='box')
+    
         plt.spy(self.__interaction_matrix.T,markersize=0.09)
         plt.xlabel("id of users")
         plt.ylabel("id of items")
         
         if fig_location != None:
             plt.savefig(fig_location,  bbox_inches='tight')
-    
-        if show_figure:
-            plt.show()
 
     # THIS function set text on slopes when plot bar
 
@@ -537,7 +539,7 @@ class DataSet:
         
         return "ok"
 
-    def find_predictions(self, model=None):
+    def find_predictions(self,path, model=None, alg=None):
         user_reviews = self.__to_train.loc[self.__to_train["user_id"] == self.__user_id]["item_id"].to_list()
 
         without_user_reviews = self.__to_train[~self.__to_train["item_id"].isin(user_reviews)][["item_id","name"]].drop_duplicates()
@@ -546,8 +548,49 @@ class DataSet:
                             lambda row: model.predict(uid=self.__user_id,iid=row["item_id"]).est, axis=1)
 
         without_user_reviews.to_pickle("predictions_pkl")
-        return without_user_reviews
+        top_10 = without_user_reviews.sort_values(by="predictions", ascending=False).head(10)
+        rated = self.make_stats_predictions(without_user_reviews,path)
 
+        top_10 = [[a]+[b] for a,b in zip(top_10.name.to_list() ,top_10.predictions.to_list())]
+
+        rated = [[a]+[b] for a,b in zip(rated.reset_index().predictions.astype("str").to_list() ,rated.item_id.to_list())]
+        path = path.split("BP-app/")[1]
+        print(path)
+        self.__trained_result_dict[alg] = {"top_10":top_10,"rated":rated,"path":path}
+        print(self.__trained_result_dict[alg])
+
+    def make_stats_predictions(self, dataset, filename):
+        ranges = []
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        min_range = math.floor(dataset["predictions"].min())
+        max_range = math.ceil(dataset["predictions"].max()) + 1
+
+        for i in range(min_range,max_range):
+
+            if i != min_range:
+                ranges.append(i - 0.5)
+
+            ranges.append(i)
+
+        dataset["predictions"] = pd.cut(dataset.predictions, bins=ranges, right=False)
+        dataset = dataset.groupby("predictions").count()
+
+        ax = dataset.item_id.plot.bar()
+
+        ax.set_xlabel("range of prediction")
+        ax.set_ylabel("number of items")
+        plt.tight_layout()
+        
+        fig.savefig(filename, figsize=(100, 100))
+
+        return dataset
+
+    def get_data_to_render_result(self, alg=None):
+        if self.__trained_result_dict[alg] is None:
+            return None
+        else:
+            return self.__trained_result_dict[alg]
 
 
     

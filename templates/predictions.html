@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<title>Upload file</title>
+{% endblock %}
+
+{% block body %}
+<div class="container">
+
+    <div >
+    
+        <table class="table thead-dar">
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">name</th>
+                <th scope="col">prediction</th>
+              </tr>
+            </thead>
+            <tbody>
+        {% for item in top_10 %}
+
+        <tr>
+            
+            <th scope="row">{{ loop.index }}</th>
+            <td>{{item[0]}}</td>
+            <td>{{item[1]}}</td>
+          </tr>
+
+        {% endfor %}
+   
+    </tbody>
+</table>
+
+
+    </div>
+
+    <div >
+        <table class="table thead-dar">
+            <thead>
+              <tr>
+                <th scope="col">range</th>
+                <th scope="col">number of items</th>
+              </tr>
+            </thead>
+            <tbody>
+        {% for item in rated %}
+
+        <tr>
+            <td>{{item[0]}}</td>
+            <td>{{item[1]}}</td>
+          </tr>
+
+        {% endfor %}
+   
+    </tbody>
+</table>
+    </div>
+
+
+        <div>
+            <picture class="pct">
+                <source srcset={{path}}>
+                <img width="1000" height="500" src=>
+              </picture>
+        </div>
+  
+
+
+    
+</div>
+
+{% endblock %}

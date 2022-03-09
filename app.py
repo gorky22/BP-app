@@ -1,6 +1,3 @@
-import pkgutil
-from tkinter import N
-from unicodedata import name
 from flask import Flask, Flask, redirect, url_for, render_template, request, flash
 from flask import send_from_directory, abort, session
 import os
@@ -11,7 +8,6 @@ from statistic import DataSet
 import pandas as pd
 import matplotlib
 import pickle
-matplotlib.use('Agg')
 import surprise
 import json
 
@@ -31,12 +27,12 @@ class datasets(db.Model):
     names_row = db.Column("names_row", db.String(100))
     rating = db.Column("rating", db.String(100))
     path_to_file = db.Column("path_to_file", db.String(100))
-    pkl_path_to_file_names = db.Column("pkl_path_to_file_names", db.String(100))
     sparsity = db.Column("sparsity", db.String(100))
     path_img_stats_all = db.Column("path_img_stats_all", db.String(200))
     path_img_stats_reduced = db.Column("path_img_stats_reduced", db.String(200))
     path_img_stats_scatter = db.Column("path_img_stats_scatter", db.String(200))
     path_img_stats_sparsity = db.Column("path_img_stats_sparsity", db.String(200))
+    path_to_img_stats = db.Column("path_to_img_stats", db.String(200))
     path_train_graph = db.Column("path_train_graph", db.String(200))
     train_steps = db.Column("train_steps", db.Integer)
     train_lr = db.Column("train_lr", db.Float)
@@ -44,6 +40,8 @@ class datasets(db.Model):
     path_to_model_svd = db.Column("path_to_model_svd", db.String(200))
     path_to_model_sgd = db.Column("path_to_model_sgd", db.String(200))
     path_to_model_als = db.Column("path_to_model_als", db.String(200))
+    path_to_dataset = db.Column("path_to_dataset", db.String(200))
+    path_to_img_rated = db.Column("path_to_img_rated", db.String(200))
 
 app.config["uploads_dataset"] = "/Users/damiangorcak/Desktop/BP-app/static/datasets"
 app.config['SECRET_KEY'] = 'anystringthatyoulike'
@@ -52,7 +50,13 @@ db.create_all()
 global dataset
 global sparsity
 
+def save_model(alg, model, database):
+    path_model = database.path_to_file.split("datasets/")[0] + "models/" + database.path_to_file.split("datasets/")[1].split(".")[0] + "-" + alg + "_pkl"
+    
+    with open(path_model, 'wb') as files:
+            pickle.dump(model, files)
 
+    return path_model
 
 @app.route("/")
 def index():
@@ -65,13 +69,9 @@ def main():
 
 @app.route("/choose_dataset", methods=["POST"])
 def choose_dataset():
-    print(request.form['dataset'])
     session["df"] = request.form['dataset']
-    print(session["df"])
-    print(session.get("df"))
     flash(u'dataset is chosen', 'ok')
     x = datasets.query.all()
-    print(session["df"])
     return render_template("main.html",x=x)
 
 def save_file(file,name,main=False):
@@ -163,46 +163,49 @@ def upload():
             if path_to_file is None :
                 flash(u'data niesu ani v json ani v csv formate', 'error')
                 return render_template("upload.html")
+            
+            pkl_path_dataset =  path_to_file.split(".")[0] + "_datasets.pkl"
+            new.path_to_dataset = pkl_path_dataset
+            new.path_to_file = path_to_file
 
             if df_names is None:
                 df = get_df_and_check_columns(file.content_type,path_to_file=path_to_file,user_col=user_col,item_col=item_col,rating_col=rating_col,names_col=names_col)
+                print(df)
                 dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col, name=names_col)
+
+                with open(pkl_path_dataset, 'wb') as ds:
+                    pickle.dump(dataset, ds)
             else:
+                
                 df = get_df_and_check_columns(file.content_type,path_to_file=path_to_file,user_col=user_col,item_col=item_col,rating_col=rating_col)
+
+                if df is None:
+                    flash(u'zadane stlpce niesu v zadanom datasete', 'error')
+                    return render_template("upload.html")
+
                 dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col)
+
+                with open(pkl_path_dataset, 'wb') as ds:
+                    pickle.dump(dataset, ds)
 
             if df is None:
                 flash(u'zadane stlpce niesu v zadanom datasete', 'error')
                 return render_template("upload.html")
 
-            pkl_path = path_to_file.split(".")[0] + ".pkl"
-
-            df.to_pickle(pkl_path)
 
             if df_names is not None:
-                
-                pkl_path_names =  path_to_file.split(".")[0] + "_names.pkl"
-
-                df_names.to_pickle(pkl_path_names)
-
-                new.pkl_path_to_file_names = pkl_path_names
 
                 dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col,name=names_col,dataset_names=df_names)
+
+                with open(pkl_path_dataset, 'wb') as ds:
+                    pickle.dump(dataset, ds)
             
             flash(u'data uspesne ulozene', 'ok')
 
-            new.path_to_file = pkl_path
-
-
             db.session.commit() 
-            
-            
-            
+                    
             session["df"] = new.name
-            
-
-            print(datasets.query.all())
-            print(datasets.query.filter_by(name=session["df"]).all())
+        
             
     
     return render_template("upload.html")
@@ -211,39 +214,17 @@ def upload():
 def statistic():
     print(session.get("df"))
     if session.get("df") is None:
-        return render_template("empty.html")
+        return render_template("empty.html", 
+                text="Nieje zadany ziaden subor s datami, prosim vlozte how v zalozke 'add data'")
     else:
         x = datasets.query.filter_by(name=session["df"]).all()[0]
 
         
         if x.path_img_stats_sparsity is not None:
-            return render_template("stats.html", x=datasets.query.filter_by(name=session["df"]).all()[0])
+            return render_template("statistic.html")
+            #return render_template("stats.html", x=datasets.query.filter_by(name=session["df"]).all()[0])
         else:
             return render_template("statistic.html")
-
-def make_dataset(x):
-    global dataset
-
-    if x.pkl_path_to_file_names is not None:
-                dataset = DataSet(dataset=pd.read_pickle(x.path_to_file),
-                                user=x.user_row,
-                                item=x.item_row,
-                                rating=x.rating,
-                                name=x.names_row,
-                                dataset_names=pd.read_pickle(x.pkl_path_to_file_names))
-
-    elif x.names_row is not None:
-        dataset = DataSet(dataset=pd.read_pickle(x.path_to_file),
-                                user=x.user_row,
-                                item=x.item_row,
-                                rating=x.rating,
-                                name=x.names_row)
-
-    else:
-        dataset = DataSet(dataset=pd.read_pickle(x.path_to_file),
-                                user=x.user_row,
-                                item=x.item_row,
-                                rating=x.rating)
 
 @app.route("/get_statistic", methods=["GET"])
 def get_statistic():
@@ -251,12 +232,14 @@ def get_statistic():
 
     x = datasets.query.filter_by(name=session["df"]).all()[0]
 
-    if x.path_img_stats_sparsity == None:
+    if x.path_img_stats_sparsity is None:
         print("tu1")
         print(x.path_to_file)
         print(x.item_row)
         if not "dataset" in globals():
-            make_dataset(x)
+            with open(x.path_to_dataset, 'rb') as ds:
+                dataset = pickle.load(ds)
+
         print("tu2")
         x.sparsity = '{:.2f}%'.format(dataset.sparsity())
         print("tu3")
@@ -265,7 +248,7 @@ def get_statistic():
         x.path_img_stats_all = "static/img/all_" + name
         x.path_img_stats_reduced = "static/img/reduced_" + name
         x.path_img_stats_scatter = "static/img/scatter_" + name
-        x.path_img_stats_sparsity = "static/img/sparsity_" + name
+        x.path_img_stats_sparsity = "static/img/sparsity_" + x.path_to_file.split("datasets/")[1].split(".")[0] + ".jpg"
         db.session.commit()
         print("tu5")
         dataset.sparsity_graph(
@@ -277,18 +260,19 @@ def get_statistic():
                             scatter=True, scatter_path=x.path_img_stats_scatter,
                             reduced=True, reduced_path=x.path_img_stats_reduced )
 
-    #return render_template("stats.html", sparsity=x.sparsity,
-    #                        img_sparsity=x.path_img_stats_sparsity,
-    #                        img_all=x.path_img_stats_all,
-    #                        img_scatter=x.path_img_stats_scatter,
-    #                        img_reduced=x.path_img_stats_reduced)
+        return render_template("stats.html", sparsity=x.sparsity,
+                                img_sparsity=x.path_img_stats_sparsity,
+                                img_all=x.path_img_stats_all,
+                                img_scatter=x.path_img_stats_scatter,
+                                img_reduced=x.path_img_stats_reduced)
 
     return render_template("stats.html",x=x)
 
 @app.route("/train")
 def train():
     if session.get("df") is None:
-        return render_template("empty.html")
+        return render_template("empty.html", 
+                text="Nieje zadany ziaden subor s datami, prosim vlozte how v zalozke 'add data'")
     else:
         x = datasets.query.filter_by(name=session["df"]).all()[0]
         if x.path_train_graph is not None:
@@ -307,7 +291,8 @@ def find_hyperparams():
     if request.method == "POST":
         print("hello")
         if not "dataset" in globals():
-            make_dataset(x)
+            with open(x.path_to_dataset, 'rb') as ds:
+                dataset = pickle.load(ds)
 
         min = dataset.find_hyperparams(alg=request.form.get("type"))
         print(min)
@@ -340,7 +325,8 @@ def find_hyperparams():
 def train_model():
 
     if session.get("df") is None:
-        return render_template("empty.html")
+        return render_template("empty.html", 
+                text="Nieje zadany ziaden subor s datami, prosim vlozte how v zalozke 'add data'")
 
     if request.method == "POST":
 
@@ -353,7 +339,8 @@ def train_model():
         path = x.path_to_file.split("datasets/")[0] + "models/" + x.path_to_file.split("datasets/")[1].split(".")[0] + "-" + alg + "_pkl"
         print(path)
         if not "dataset" in globals():
-            make_dataset(x)
+            with open(x.path_to_dataset, 'rb') as ds:
+                dataset = pickle.load(ds)
 
         lr = float(request.form.get("lr"))
 
@@ -389,16 +376,18 @@ def train_model():
 @app.route("/recomend")
 def recomend():
     if session.get("df") is None:
-        return render_template("empty.html")
+        return render_template("empty.html", 
+                text="Nieje zadany ziaden subor s datami, prosim vlozte how v zalozke 'add data'")
     else:
         x = datasets.query.filter_by(name=session["df"]).all()[0]
         global dataset
         if not "dataset" in globals():
-            make_dataset(x)
+            with open(x.path_to_dataset, 'rb') as ds:
+                dataset = pickle.load(ds)
+
         min, max, data= dataset.get_items()
 
     return render_template("recomend.html",min=min, max=max, data=data)
-
 
 @app.route("/make_recomendation",  methods=["POST"])
 def make_recomendation():
@@ -411,19 +400,103 @@ def make_recomendation():
         x = datasets.query.filter_by(name=session["df"]).all()[0]
         global dataset
         if not "dataset" in globals():
-            make_dataset(x)
-        print(dataset.make_dat_with_name(json.loads(request.form.get("btn"))))
-        print("model:")
-        print(x.path_to_model_sgd)
-        model = pickle.load(open(x.path_to_model_sgd, 'rb'))
+            with open(x.path_to_dataset, 'rb') as ds:
+                dataset = pickle.load(ds)
+
+        alg = None
+        model = None
+
+        
+
+        if request.form.get("ALS") is not None:
+            alg = "ALS"
+            print(dataset.make_dat_with_name(json.loads(request.form.get(alg))))
+            model = dataset.train_model_als()
+            x.path_to_model_als = save_model(alg.lower(),model,x)
+
+        elif request.form.get("SVD") is not None:
+            alg = "SVD"
+            print(dataset.make_dat_with_name(json.loads(request.form.get(alg))))
+            model = dataset.train_model_svd()
+            x.path_to_model_svd = save_model(alg.lower(),model,x)
+
+        else:
+            alg = "SGD"
+           
+            print(dataset.make_dat_with_name(json.loads(request.form.get(alg))))
+            model = dataset.train_model_sgd()
+            x.path_to_model_sgd = save_model(alg.lower(),model,x)
+            
+
+        path = x.path_to_file.split("datasets/")[0] + "predicted/" + x.path_to_file.split("datasets/")[1].split(".")[0] + "_" + alg + "_predicted.png"
+        path_to_img_rated = "static/predicted/" + x.path_to_file.split("datasets/")[1].split(".")[0] + "_" + alg + "_predicted.png"
+
         print("data: ")
-        print(dataset.find_predictions(model=model))
-        min,max,data= dataset.get_items()
+        dataset.find_predictions(path, model=model, alg=alg.lower())
 
-    return render_template("recomend.html",data=data, min=min, max=max)
+        results = dataset.get_data_to_render_result(alg=alg.lower())
 
+        # save class because new dict is apended
 
+        with open(x.path_to_dataset, 'wb') as ds:
+                    pickle.dump(dataset, ds)
+        
+        if results is None:
+            return render_template("empty.html",
+                        text="pre tento algoritmus nieje vytrenovany model")
 
+        db.session.commit()
+
+    return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], path=results["path"])
+
+@app.route("/als_results")
+def als_results():
+    x = datasets.query.filter_by(name=session["df"]).all()[0]
+    global dataset
+    if not "dataset" in globals():
+        with open(x.path_to_dataset, 'rb') as ds:
+            dataset = pickle.load(ds)
+    
+    results = dataset.get_data_to_render_result(alg="als")
+        
+    if results is None:
+        return render_template("empty.html",
+                        text="pre tento algoritmus nieje vytrenovany model")
+    else:
+        return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], path=results["path"])
+
+@app.route("/sgd_results")
+def sgd_results():
+    x = datasets.query.filter_by(name=session["df"]).all()[0]
+    global dataset
+    if not "dataset" in globals():
+        with open(x.path_to_dataset, 'rb') as ds:
+            dataset = pickle.load(ds)
+    
+    
+    results = dataset.get_data_to_render_result(alg="sgd")
+
+    if results is None:
+        return render_template("empty.html",
+                        text="pre tento algoritmus nieje vytrenovany model")
+    else:
+        return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], path=results["path"])
+
+@app.route("/svd_results")
+def svd_results():
+    x = datasets.query.filter_by(name=session["df"]).all()[0]
+    global dataset
+    if not "dataset" in globals():
+        with open(x.path_to_dataset, 'rb') as ds:
+            dataset = pickle.load(ds)
+    
+    results = dataset.get_data_to_render_result(alg="svd")
+  
+    if results is None:
+        return render_template("empty.html",
+                        text="pre tento algoritmus nieje vytrenovany model")
+    else:
+        return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], path=results["path"])
 
 if __name__ == "__main__":
     app.run(debug=True)
