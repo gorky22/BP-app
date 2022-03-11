@@ -14,30 +14,57 @@
         <form class="row g-3 action="/upload" method="POST" enctype="multipart/form-data">
         <div class="col-md-4">
             <label for="validationDefault01" class="form-label">Stlpec uzivatelov</label>
-            <input name="user_id" type="text" class="form-control" id="validationDefault01"  required>
+            <input name="user_id" type="text" class="form-control" id="validationDefault01" value="user_id"  required>
         </div>
         <div class="col-md-4">
             <label for="validationDefault02" class="form-label">Stlpec poloziek</label>
-            <input name="item_id" type="text" class="form-control" id="validationDefault02"  required>
+            <input name="item_id" type="text" class="form-control" id="validationDefault02" onchange="sendData(this.id)" required>
         </div>
         <div class="col-md-4">
             <label for="validationDefaultUsername" class="form-label">Stlpec hodnoteni</label>
             <div class="input-group">
-            <input name="rating" type="text" class="form-control" id="validationDefaultUsername"  aria-describedby="inputGroupPrepend2" required>
+            <input name="rating" type="text" class="form-control" id="validationDefaultUsername"  aria-describedby="inputGroupPrepend2" value="rating" required>
             </div>
         </div>
         <div class="col-md-4">
             <label for="validationDefaultUsername" class="form-label">Stlpec s nazvami poloziek (nepovine)</label>
             <div class="input-group">
-            <input name="item_names" type="text" class="form-control" id="validationDefaultUsername"  aria-describedby="inputGroupPrepend2" >
+            <input name="item_names" type="text" class="form-control" id="validationDefaultUsername"  aria-describedby="inputGroupPrepend2" value="name"  >
             </div>
         </div>
         <div class="col-md-4">
-            <label for="validationDefaultUsername" class="form-label">Stlpec s id datasetu kde su nazvy (nepovine)</label>
+            <label for="validationDefaultUsername" class="form-label">Stlpec s id datasetu kde su nazvi (nepovine)</label>
             <div class="input-group">
-            <input name="item_names_id" type="text" class="form-control" id="validationDefaultUsername"  aria-describedby="inputGroupPrepend2" >
+            <input name="item_names_id" type="text" class="form-control" id="validationDefaultUsername2"  aria-describedby="inputGroupPrepend2"  >
             </div>
         </div>
+        <div class="col-md-4">
+            <label for="validationDefaultUsername" class="form-label">Meno </label>
+            <div class="input-group">
+            <input name="name" type="text" class="form-control"  id="validationDefaultUsername"  aria-describedby="inputGroupPrepend2"  >
+            </div>
+        </div>
+        <div class="col-md-4">
+            <label for="validationDefaultUsername" class="form-label">separator (nepovine)</label>
+            <div class="input-group">
+            <input name="separator" type="text" class="form-control" value="," id="validationDefaultUsername2"  aria-describedby="inputGroupPrepend2"  >
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <label for="validationDefaultUsername" class="form-label">nazov stlpca pre zanre (nepovinne)</label>
+            <div class="input-group">
+            <input name="genre" type="text" class="form-control" id="validationDefaultUsername2"  aria-describedby="inputGroupPrepend2"  >
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <label for="validationDefaultUsername" class="form-label">separator pre zanre</label>
+            <div class="input-group">
+            <input name="genre-separator" type="text" class="form-control" id="validationDefaultUsername2"  aria-describedby="inputGroupPrepend2"  >
+            </div>
+        </div>
+
         <div class="col-md-6">
             <label for="validationDefault03" class="form-label">subor s datami</label>
             <input name="file" type="file" class="form-control" id="validationDefault03" required>
@@ -47,6 +74,8 @@
             <label for="validationDefault03" class="form-label">subor s datami kde su nazvi(nepovinne)</label>
             <input name="file_names" type="file" class="form-control" >
         </div>
+
+      
            
         
         <div class="col-12">
@@ -73,11 +102,13 @@
 
 </div>
 
-
-
-    
-
     
 </div>
+
+<script>
+    function sendData(id) {
+        document.getElementById("validationDefaultUsername2").value = document.getElementById(id).value ;
+    }
+</script>
 
 {% endblock %}

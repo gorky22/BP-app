@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<title>Upload file</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+{% endblock %}
+
+{% block body %}
+<div class="container">
+
+    <div >
+    
+        <table class="table thead-dar">
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">name</th>
+                <th scope="col">genres</th>
+                <th scope="col">prediction</th>
+              </tr>
+            </thead>
+            <tbody>
+        {% for item in top_10 %}
+
+        <tr>
+            
+            <th scope="row">{{ loop.index }}</th>
+            <td>{{item[0]}}</td>
+            <td>{{item[2]}}</td>
+            <td>{{item[1]}}</td>
+          </tr>
+
+        {% endfor %}
+   
+    </tbody>
+</table>
+
+
+    </div>
+
+    <div >
+        <table class="table thead-dar">
+            <thead>
+              <tr>
+                <th scope="col">range</th>
+                <th scope="col">number of items</th>
+              </tr>
+            </thead>
+            <tbody>
+        {% for item in rated %}
+
+        <tr>
+            <td>{{item[0]}}</td>
+            <td>{{item[1]}}</td>
+          </tr>
+
+        {% endfor %}
+   
+    </tbody>
+</table>
+    </div>
+
+
+        <div>
+          <canvas id="myChart" ></canvas>
+        </div>
+  
+
+
+    
+</div>
+
+<script>
+  let x = "{{ ranges }}"
+
+  x = x.substring(1, x.length-1).split("&#34;")
+  x = x.filter(el => (el != "" && el != ", "))
+
+
+  const ctx = document.getElementById('myChart').getContext('2d');
+const myChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: x,
+        datasets: [{
+            label: 'num of items',
+            data:  JSON.parse("{{ values }}"),
+            
+            borderWidth: 1
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'predicted items - ranges'
+                    }
+            },
+
+            x: {
+                title: {
+                    display: true,
+                    text: 'range of ratings'
+                    }
+            }
+            
+        }
+    }
+});
+
+
+</script>
+
+{% endblock %}

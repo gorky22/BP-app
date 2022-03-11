@@ -1,4 +1,5 @@
 from tkinter.font import names
+from tkinter.ttk import Separator
 from flask import Flask, Flask, redirect, url_for, render_template, request, flash
 from flask import send_from_directory, abort, session
 import os
@@ -43,6 +44,8 @@ class datasets(db.Model):
     path_to_model_als = db.Column("path_to_model_als", db.String(200))
     path_to_dataset = db.Column("path_to_dataset", db.String(200))
     path_to_img_rated = db.Column("path_to_img_rated", db.String(200))
+    had_genre = db.Column("had_genre", db.Boolean, default=False)
+    sep = db.Column("sep", db.String(200))
 
 app.config["uploads_dataset"] = "/Users/damiangorcak/Desktop/BP-app/static/datasets"
 app.config['SECRET_KEY'] = 'anystringthatyoulike'
@@ -92,9 +95,9 @@ def save_file(file,name,main=False):
     else:
         return None
 
-def get_df_and_check_columns(content_type,path_to_file,user_col=None,item_col=None,rating_col=None,names_col=None, name_id=None):
+def get_df_and_check_columns(content_type,path_to_file,separator, user_col=None,item_col=None,rating_col=None,names_col=None, name_id=None, genre=None):
     if "csv" in content_type:
-        df = pd.read_csv(path_to_file)
+        df = pd.read_csv(path_to_file, sep=separator ,encoding='latin-1', on_bad_lines='skip',)
     else:
         df = pd.read_json(path_to_file, lines=True)
 
@@ -108,10 +111,16 @@ def get_df_and_check_columns(content_type,path_to_file,user_col=None,item_col=No
     else:
 
         if user_col == None:
-            if  not all(x in list(df.columns) for x in [names_col]):
-                return None
-            else :
-                return df
+            if genre == None:
+                if  not all(x in list(df.columns) for x in [names_col]):
+                    return None
+                else :
+                    return df
+            else:
+                if  not all(x in list(df.columns) for x in [names_col,genre]):
+                    return None
+                else :
+                    return df
         else:
 
             if  not all(x in list(df.columns) for x in [user_col, item_col, rating_col,names_col,name_id]):
@@ -123,10 +132,9 @@ def get_df_and_check_columns(content_type,path_to_file,user_col=None,item_col=No
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
-    #db.drop_all()
-    #db.create_all()
+    db.drop_all()
+    db.create_all()
     if request.method == "POST":
-        print("here")
         if request.files:
             
             file = request.files["file"]
@@ -135,8 +143,15 @@ def upload():
             rating_col = request.form.get("rating")
             names_col = request.form.get("item_names")
             name_id_col = request.form.get("item_names_id")
+            name = request.form.get("name")
+            sep = request.form.get("separator")
+            genre = request.form.get("genre")
+            genre_separator = request.form.get("genre-separator")
 
-            if name_id_col is None:
+            if request.form.get("genre") is not None and request.form.get("genre-separator") == False:
+                genre = None
+
+            if name_id_col == False:
                 name_id_col = item_col
 
             file_names = request.files["file_names"]
@@ -145,28 +160,32 @@ def upload():
                 flash(u'dataset s menami zadany ale nazov stlpca s menami nieje zadany', 'error')
                 return render_template("upload.html")
 
-            print(user_col,item_col,rating_col,names_col)
-            new = datasets(user_row=user_col, item_row=item_col, rating=rating_col, names_row=names_col)
+            if genre != False:
+                new = datasets(user_row=user_col, item_row=item_col, rating=rating_col, names_row=names_col, had_genre=True, sep=genre_separator)
+            else:
+                new = datasets(user_row=user_col, item_row=item_col, rating=rating_col, names_row=names_col)
 
             db.session.add(new)
-            db.session.commit()
+      
 
-            new.name = file.filename.split(".")[0] + str(new._id) + "." + file.filename.split(".")[1]
+            file_path = file.filename.split(".")[0] + str(new._id) + "." + file.filename.split(".")[1]
 
-            db.session.commit()
-            
-            path_to_file = save_file(file,new.name)
+
+            path_to_file = save_file(file,file_path)
             path_to_file_names = None
             df_names = None
 
             if file_names is not None:
-                path_to_file_names = save_file(file_names,new.name,main=True)
+                path_to_file_names = save_file(file_names,file_path,main=True)
 
                 if path_to_file_names is None:
                     flash(u'data s menami niesu ani v json ani v csv formate', 'error')
                     return render_template("upload.html")
                 
-                df_names = get_df_and_check_columns(file_names.content_type,path_to_file=path_to_file_names,names_col=names_col,name_id=name_id_col)
+                if new.had_genre:
+                    df_names = get_df_and_check_columns(file_names.content_type,path_to_file=path_to_file_names,separator=sep,names_col=names_col,name_id=name_id_col, genre=genre)
+                else:
+                    df_names = get_df_and_check_columns(file_names.content_type,path_to_file=path_to_file_names,separator=sep,names_col=names_col,name_id=name_id_col)
 
                 if df_names is None:
                     flash(u'zadane stlpce (dataset s menami) niesu v zadanom datasete', 'error')
@@ -181,14 +200,14 @@ def upload():
             new.path_to_file = path_to_file
 
             if df_names is None:
-                df = get_df_and_check_columns(file.content_type,path_to_file=path_to_file,user_col=user_col,item_col=item_col,rating_col=rating_col,names_col=names_col)
-                print(df)
+                df = get_df_and_check_columns(file.content_type,path_to_file=path_to_file,separator=sep, user_col=user_col,item_col=item_col,rating_col=rating_col,names_col=names_col)
+
                 dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col, name=names_col)
 
                 dataset.save(pkl_path_dataset)
             else:
                 
-                df = get_df_and_check_columns(file.content_type,path_to_file=path_to_file,user_col=user_col,item_col=item_col,rating_col=rating_col)
+                df = get_df_and_check_columns(file.content_type,path_to_file=path_to_file,separator=sep,user_col=user_col,item_col=item_col,rating_col=rating_col)
 
                 if df is None:
                     flash(u'zadane stlpce niesu v zadanom datasete', 'error')
@@ -204,15 +223,19 @@ def upload():
 
 
             if df_names is not None:
-
-                dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col,name=names_col,dataset_names=df_names, name_item_id_name=name_id_col)
+                
+                if new.had_genre:
+                    dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col,name=names_col,dataset_names=df_names, name_item_id_name=name_id_col, genre=genre)
+                else:
+                    dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col,name=names_col,dataset_names=df_names, name_item_id_name=name_id_col)
 
                 dataset.save(pkl_path_dataset)
             
             flash(u'data uspesne ulozene', 'ok')
 
+            
+            new.name = name + str(new._id)
             db.session.commit() 
-                    
             session["df"] = new.name
         
             
@@ -221,7 +244,7 @@ def upload():
 
 @app.route("/statistic")
 def statistic():
-    print(session.get("df"))
+
     if session.get("df") is None:
         return render_template("empty.html", 
                 text="Nieje zadany ziaden subor s datami, prosim vlozte how v zalozke 'add data'")
@@ -240,24 +263,24 @@ def get_statistic():
     x = datasets.query.filter_by(name=session["df"]).all()[0]
 
     if x.path_img_stats_sparsity is None:
-        print("tu1")
-        print(x.path_to_file)
-        print(x.item_row)
+        #print("tu1")
+        #print(x.path_to_file)
+        #print(x.item_row)
         if not "dataset" in globals():
             with open(x.path_to_dataset, 'rb') as ds:
                 dataset = pickle.load(ds)
 
-        print("tu2")
+        #print("tu2")
         x.sparsity = '{:.2f}%'.format(dataset.sparsity())
-        print("tu3")
+        #print("tu3")
         name = x.path_to_file.split("datasets/")[1].split(".")[0] + ".png"
-        print("tu4")
+        #print("tu4")
         x.path_img_stats_all = "static/img/all_" + name
         x.path_img_stats_reduced = "static/img/reduced_" + name
         x.path_img_stats_scatter = "static/img/scatter_" + name
         x.path_img_stats_sparsity = "static/img/sparsity_" + x.path_to_file.split("datasets/")[1].split(".")[0] + ".jpg"
         db.session.commit()
-        print("tu5")
+        #print("tu5")
         dataset.sparsity_graph(
             fig_location=x.path_img_stats_sparsity
         )
@@ -285,20 +308,20 @@ def train():
 
 @app.route("/find_hyperparams", methods=["GET","POST"])
 def find_hyperparams():
-    print("hello")
+    #print("hello")
 
     global dataset
 
     x = datasets.query.filter_by(name=session["df"]).all()[0]
-    print(x.path_train_graph)
+    #print(x.path_train_graph)
     if request.method == "POST":
-        print("hello")
+        #print("hello")
         if not "dataset" in globals():
             with open(x.path_to_dataset, 'rb') as ds:
                 dataset = pickle.load(ds)
 
         min = dataset.find_hyperparams(alg=request.form.get("type"))
-        print(min)
+        #print(min)
         
 
         path = x.path_to_file.split("datasets/")[1].split(".")[0] + ".png"
@@ -381,6 +404,8 @@ def train_model():
        
     return render_template("train_model.html")
 
+
+
 @app.route("/recomend")
 def recomend():
     if session.get("df") is None:
@@ -393,9 +418,14 @@ def recomend():
             with open(x.path_to_dataset, 'rb') as ds:
                 dataset = pickle.load(ds)
 
-        min, max, data= dataset.get_items()
+        if not x.had_genre:
+            min, max, data= dataset.get_items()
+            return render_template("recomend.html",min=min, max=max, data=data)
+        else :
+            min, max, data= dataset.get_items_genre()
+            return render_template("recomend_genre.html",min=min, max=max, data=data)
 
-    return render_template("recomend.html",min=min, max=max, data=data)
+
 
 @app.route("/make_recomendation",  methods=["POST"])
 def make_recomendation():
@@ -403,7 +433,6 @@ def make_recomendation():
     if session.get("df") is None:
         return render_template("empty.html")
     else:
-        print("1")
         
         x = datasets.query.filter_by(name=session["df"]).all()[0]
         global dataset
@@ -418,28 +447,31 @@ def make_recomendation():
 
         if request.form.get("ALS") is not None:
             alg = "ALS"
-            print(dataset.make_dat_with_name(json.loads(request.form.get(alg))))
+            #print(dataset.make_dat_with_name(json.loads(request.form.get(alg))))
             model = dataset.train_model_als()
             x.path_to_model_als = save_model(alg.lower(),model,x)
 
         elif request.form.get("SVD") is not None:
             alg = "SVD"
-            print(dataset.make_dat_with_name(json.loads(request.form.get(alg))))
+            #print(dataset.make_dat_with_name(json.loads(request.form.get(alg))))
             model = dataset.train_model_svd()
             x.path_to_model_svd = save_model(alg.lower(),model,x)
 
         else:
             alg = "SGD"
            
-            print(dataset.make_dat_with_name(json.loads(request.form.get(alg))))
+            dataset.make_dat_with_name(json.loads(request.form.get(alg)))
             model = dataset.train_model_sgd()
             x.path_to_model_sgd = save_model(alg.lower(),model,x)
             
 
         path = x.path_to_file.split("datasets/")[0] + "predicted/" + x.path_to_file.split("datasets/")[1].split(".")[0] + "_" + alg + "_predicted.png"
 
-        print("data: ")
-        dataset.find_predictions(path, model=model, alg=alg.lower())
+        #print("data: ")
+        if x.had_genre:
+            dataset.find_predictions_genre(path, model=model, alg=alg.lower())
+        else:
+            dataset.find_predictions(path, model=model, alg=alg.lower())
 
         results = dataset.get_data_to_render_result(alg=alg.lower())
 
@@ -453,7 +485,11 @@ def make_recomendation():
 
         db.session.commit()
 
-    return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], 
+    if x.had_genre:
+        return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
+                            ranges=results["ranges"], values=results["values"])
+    else:
+        return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
                             ranges=results["ranges"], values=results["values"])
 
 @app.route("/als_results")
@@ -465,13 +501,14 @@ def als_results():
             dataset = pickle.load(ds)
     
     results = dataset.get_data_to_render_result(alg="als")
+    #print(results)
         
     if results is None:
         return render_template("empty.html",
                         text="pre tento algoritmus nieje vytrenovany model")
     else:
         return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], 
-                            ranges=results["ranges"], values=results["values"])
+                                    ranges=results["ranges"], values=results["values"])
 
 @app.route("/sgd_results")
 def sgd_results():
@@ -514,9 +551,13 @@ def charts():
     if not "dataset" in globals():
         with open(x.path_to_dataset, 'rb') as ds:
             dataset = pickle.load(ds)
-    x.sparsity = '{:.2f}%'.format(dataset.sparsity())
+
+    if x.sparsity is None:
+        x.sparsity = '{:.2f}%'.format(dataset.sparsity())
+
     df = dataset.ratings_graph(all=True,scatter=True,reduced=True)
-    print(df)
+    ratings, counts = dataset.get_counts()
+    #print(df)
     return render_template("charts.html",item_reduced=df["item_reduced"], 
                                          user_reduced=df["user_reduced"],
                                          user_all_user=df["user_all"]["user"],
@@ -524,10 +565,11 @@ def charts():
                                          item_all_item=df["item_all"]["item"],
                                          item_all_user=df["item_all"]["user"],
                                          scatter=df["scatter"],
+                                         ratings=ratings,
+                                         counts=counts,
                                          x=x
                                          )
 
+
 if __name__ == "__main__":
-    
-    
     app.run(debug=True)

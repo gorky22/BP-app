@@ -49,12 +49,29 @@ class DataSet:
     __user_id = None
     
 
-    def __init__(self, dataset, user, item, rating, name=None, dataset_names=None, name_item_id_name=None):
+    def __init__(self, dataset, user, item, rating, name=None, dataset_names=None, name_item_id_name=None, genre=None):
         
+        self.genre = False
+
         if dataset_names is not None:
             tmp = dataset_names.rename(columns={name_item_id_name:"item_id", name:"name"})
-            self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating"})
-            self.__name_and_id_item = pd.merge(self.dataset, tmp, how="left", on="item_id")[["user_id","item_id","name","rating"]]
+
+            if genre is not None:
+                self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating", genre:"genre"})
+            else:
+                self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating"})
+
+            tmp = pd.merge(self.dataset, tmp, how="left", on="item_id")
+            
+            if "rating_x" in list(tmp.columns):
+                tmp = tmp.rename(columns={"rating_x":"rating"})
+
+            if genre is None:
+                self.__name_and_id_item = tmp[["user_id","item_id","name","rating"]]
+            else:
+                self.__name_and_id_item = tmp[["user_id","item_id","name","rating","genre"]]
+                self.genre = True
+
         elif name is not None:
             self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating", name:"name"})
             self.__name_and_id_item = self.dataset[["user_id","item_id","name","rating"]]
@@ -541,29 +558,45 @@ class DataSet:
             
             return self.dataset["rating"].min(), self.dataset["rating"].max(), x[["item_id", "name"]].values.tolist()
 
+    def get_items_genre(self):
+        if self.__name_and_id_item is not None:
+            x = self.__name_and_id_item.groupby(["item_id","name","genre"]).count()
+            x = x.loc[x["rating"] > 5].reset_index()
+            x = x.sample(n=100)
+            
+            return self.dataset["rating"].min(), self.dataset["rating"].max(), x[["item_id", "name", "genre"]].values.tolist()
+
     def make_dat_with_name(self, data_to_add):
         if self.__user_id is None:
             self.__user_id = self.__name_and_id_item["user_id"].max() + 1
         if self.__to_train is None:
             self.__to_train = self.__name_and_id_item
 
-        dict = {'user_id': [], 'item_id': [], 
-                'name': [], 'rating': []}
+        if self.genre:
+            dict = {'user_id': [], 'item_id': [], 
+                    'name': [], 'rating': [], 'genre':[]}
+        else:
+            dict = {'user_id': [], 'item_id': [], 
+                    'name': [], 'rating': []}
         for key in data_to_add:
             dict['user_id'].append(self.__user_id)
             dict['item_id'].append(key)
             dict['rating'].append(data_to_add[key][1])
             dict['name'].append(data_to_add[key][0])
+            if self.genre:
+                dict['genre'].append(data_to_add[key][2])
             
         tmp_df = pd.DataFrame(dict)
         self.__to_train = pd.concat([self.__to_train, tmp_df], ignore_index = True, axis = 0)   
-        
-        return "ok"
 
     def find_predictions(self,path, model=None, alg=None):
         user_reviews = self.__to_train.loc[self.__to_train["user_id"] == self.__user_id]["item_id"].to_list()
 
         without_user_reviews = self.__to_train[~self.__to_train["item_id"].isin(user_reviews)][["item_id","name"]].drop_duplicates()
+
+        # if dataset is tooo big it brings just first 1M elements
+
+        without_user_reviews =  without_user_reviews.head(1000000)
 
         without_user_reviews["predictions"] = without_user_reviews.apply(
                             lambda row: model.predict(uid=self.__user_id,iid=row["item_id"]).est, axis=1)
@@ -582,7 +615,34 @@ class DataSet:
         
      
         self.trained_result_dict[alg] = {"top_10":top_10,"rated":rated,"ranges":rated_graph_ranges,"values":rated_graph_values}
-        print(self.trained_result_dict[alg])
+        #print(self.trained_result_dict[alg])
+
+    def find_predictions_genre(self,path, model=None, alg=None):
+        user_reviews = self.__to_train.loc[self.__to_train["user_id"] == self.__user_id]["item_id"].to_list()
+
+        without_user_reviews = self.__to_train[~self.__to_train["item_id"].isin(user_reviews)][["item_id","name","genre"]].drop_duplicates()
+
+        # if dataset is tooo big it brings just first 1M elements
+
+        without_user_reviews =  without_user_reviews.head(1000000)
+
+        without_user_reviews["predictions"] = without_user_reviews.apply(
+                            lambda row: model.predict(uid=self.__user_id,iid=row["item_id"]).est, axis=1)
+
+        without_user_reviews.to_pickle("predictions_pkl")
+        top_10 = without_user_reviews.sort_values(by="predictions", ascending=False).head(10)
+        rated = self.make_stats_predictions(without_user_reviews,path)
+
+        top_10 = [[a]+[c]+[b] for a,b,c in zip(top_10.name.to_list() ,top_10.predictions.to_list(),top_10.genre.to_list())]
+
+        rated_graph_ranges = json.dumps(rated.reset_index().predictions.astype("str").to_list())
+
+        rated_graph_values = json.dumps(rated.reset_index().name.to_list())
+
+        rated = [[a]+[b] for a,b in zip(rated.reset_index().predictions.astype("str").to_list() ,rated.item_id.to_list())]
+        
+     
+        self.trained_result_dict[alg] = {"top_10":top_10,"rated":rated,"ranges":rated_graph_ranges,"values":rated_graph_values}
 
     def make_stats_predictions(self, dataset, filename):
         ranges = []
@@ -621,7 +681,18 @@ class DataSet:
     def save(self, file_handler):
         with open(file_handler, 'wb') as pickle_file:
             pickle.dump(self, pickle_file)
-        
+
+    def get_counts(self):
+        ratings = []
+        counts = []
+        dc = self.dataset["rating"].value_counts().to_dict()
+
+        for key in sorted(dc):
+            ratings.append(key)
+            counts.append(dc[key])
+
+        return ratings, counts
+
 
 
     
