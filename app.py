@@ -132,8 +132,8 @@ def get_df_and_check_columns(content_type,path_to_file,separator, user_col=None,
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
-    db.drop_all()
-    db.create_all()
+    #db.drop_all()
+    #db.create_all()
     if request.method == "POST":
         if request.files:
             
@@ -301,8 +301,8 @@ def train():
                 text="Nieje zadany ziaden subor s datami, prosim vlozte how v zalozke 'add data'")
     else:
         x = datasets.query.filter_by(name=session["df"]).all()[0]
-        if x.path_train_graph is not None:
-            return render_template("train_stats.html", x=x)
+        #if x.path_train_graph is not None:
+            #return render_template("train_stats.html", x=x)
 
         return render_template("train.html")
 
@@ -320,17 +320,13 @@ def find_hyperparams():
             with open(x.path_to_dataset, 'rb') as ds:
                 dataset = pickle.load(ds)
 
-        min = dataset.find_hyperparams(alg=request.form.get("type"))
-        #print(min)
+        min, a = dataset.find_hyperparams(alg=request.form.get("type"))
+        print(min)
         
 
         path = x.path_to_file.split("datasets/")[1].split(".")[0] + ".png"
         x.path_train_graph = "static/train_img/train_" + path
-        x.train_steps = min["params"]['k']
-        x.train_lr = min["params"]["learning_rate"]
-        x.train_alg = min["alg"]
-        x.train_rmse = min["target"]
-        db.session.commit()
+        
 
         if request.form.get("type") == "als":
             dataset.graphs_alghoritms(als=True, 
@@ -344,8 +340,15 @@ def find_hyperparams():
         else:
             dataset.graphs_alghoritms(sgd=True, als=True, svd=True,
                                 lr=True,   time=True, eval=True,save_path=x.path_train_graph)
+        
+        dataset.save(x.path_to_dataset)
+        db.session.commit()
 
-    return render_template("train_stats.html", x=x)
+        
+
+    return render_template("tmp.html",x=min, sgd_time=a["sgd"]["time"],sgd_steps=a["sgd"]["steps"],sgd_lr=a["sgd"]["lr"],
+                                        als_time=a["als"]["time"],als_steps=a["als"]["steps"],als_lr=a["als"]["lr"],
+                                        svd_time=a["svd"]["time"],svd_steps=a["svd"]["steps"],svd_lr=a["svd"]["lr"])
 
 @app.route("/train_model", methods=["GET","POST"])
 def train_model():
@@ -569,6 +572,28 @@ def charts():
                                          counts=counts,
                                          x=x
                                          )
+
+@app.route("/tmp")
+def tmp():
+    x = datasets.query.filter_by(name=session["df"]).all()[0]
+    global dataset
+    if not "dataset" in globals():
+        with open(x.path_to_dataset, 'rb') as ds:
+            dataset = pickle.load(ds)
+    
+    a,min = dataset.get_tmp()
+
+    if min is None:
+        return render_template("empty.html",
+                        text="not found any stats! try it in section --Find hyperparams--")
+
+    print(a["als"]["time"])
+    print("-------------------")
+    print(a["svd"]["time"])
+
+    return render_template("tmp.html",x=min, sgd_time=a["sgd"]["time"],sgd_steps=a["sgd"]["steps"],sgd_lr=a["sgd"]["lr"],
+                                        als_time=a["als"]["time"],als_steps=a["als"]["steps"],als_lr=a["als"]["lr"],
+                                        svd_time=a["svd"]["time"],svd_steps=a["svd"]["steps"],svd_lr=a["svd"]["lr"])
 
 
 if __name__ == "__main__":

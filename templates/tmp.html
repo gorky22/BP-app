@@ -1,0 +1,255 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<title>Upload file</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+{% endblock %}
+
+{% block body %}
+<div class="container">
+
+
+ 
+        <h1 class="txt">Results of trainig</h1>
+    
+        <ul class="list-group">
+            <li class="list-group-item active">minimal RMSE was {{x["target"]}}</li>
+            <li class="list-group-item">alghoritm: {{x["alg"]}}</li>
+            <li class="list-group-item">learning rate: {{x["params"]["learning_rate"]}}</li>
+            <li class="list-group-item">steps: {{x["params"]['k']}}</li>
+            <li class="list-group-item">
+    
+                <div class="btn-group" role="group" aria-label="Basic example">
+                    <form  action="train_model" method="post" >
+                        <p class="show">try another algothitms: </p>
+    
+                        <button type="submit" class="show btn btn-primary" name="type" value="sgd">SGD</button>
+            
+                        <button type="submit" class="show btn btn-primary" name="type" value="svd">SVD</button>
+             
+                
+            
+                        <button type="submit" class="show btn btn-primary" name="type" value="als">ALS</button>
+            
+            
+                        <button type="submit" class="show btn btn-primary" name="type" value="all">ALL</button>
+                    </form>
+                  </div>
+            </li>
+            
+          </ul>
+          
+          <div class="row">
+            
+            <div class="col-xs-6" style="width:50%">
+                <canvas id="myChart" ></canvas>
+            </div>
+            <div class="col-xs-6" style="width:50%">
+                <canvas id="myChart2" ></canvas>
+            </div>
+        </div>
+
+        <div class="row">
+            
+            <div class="col-xs-6" style="width:50%">
+                <canvas id="myChart3" ></canvas>
+            </div>
+        </div>
+        
+           
+        
+        
+
+        
+    </div>
+
+
+  <script>
+
+    if("{{ sgd_time }}" == "None") {
+        sgd_time = NaN
+        sgd_steps = NaN
+        sgd_lr = NaN
+    } else {
+        sgd_time = JSON.parse("{{ sgd_time }}")
+        sgd_steps = JSON.parse("{{ sgd_steps }}")
+        sgd_lr = JSON.parse("{{ sgd_lr }}")
+        
+    }
+
+    if("{{ als_time }}" == "None") {
+        als_time = NaN
+        als_steps = NaN
+        als_lr = NaN
+    } else {
+        als_time = make_dict_for_scatter(JSON.parse("{{ als_time }}"))
+        als_steps = make_dict_for_scatter(JSON.parse("{{ als_steps }}"))
+        als_lr = make_dict_for_scatter(JSON.parse("{{ als_lr }}"))
+        
+    }
+
+    if("{{ svd_time }}" == "None") {
+        svd_time = NaN
+        svd_steps = NaN
+        svd_lr = NaN
+    } else {
+        svd_time = make_dict_for_scatter(JSON.parse("{{ svd_time }}"))
+        svd_steps = make_dict_for_scatter(JSON.parse("{{ svd_steps }}"))
+        svd_lr = make_dict_for_scatter(JSON.parse("{{ svd_lr }}"))
+        
+    }
+
+    function   make_dict_for_scatter(tmp) {
+        let scatter = []
+        for (var i = 0; i < tmp.length; i++) {
+            let tmp_dic = {}
+            tmp_dic["x"] = tmp[i][0]
+            tmp_dic["y"] = tmp[i][1]
+            scatter.push(tmp_dic)
+        }
+
+        return scatter
+    }
+
+      
+const data_time = {
+  datasets: [{
+    label: 'SGD',
+    data: sgd_time,
+    backgroundColor: 'rgb(255, 99, 132)'
+  },
+  {
+    label: 'ALS',
+    data: als_time,
+    backgroundColor: 'rgb(100, 199, 32)'
+  },
+  {
+    label: 'SVD',
+    data: svd_time,
+    backgroundColor: 'rgb(254, 9, 2)'
+  }
+],
+};
+
+const ctx3 = document.getElementById('myChart3').getContext('2d');
+const myChart3 = new Chart(ctx3, {
+    type: 'scatter',
+    data: data_time,
+    options: {
+        scales: {
+            y: {
+                
+                title: {
+                    display: true,
+                    text: 'rmse'
+                    }
+            },
+
+            x: {
+                title: {
+                    display: true,
+                    text: 'time'
+                    }
+            }
+            
+        }
+    }
+});
+
+const data_steps = {
+  datasets: [{
+    label: 'SGD',
+    data: sgd_steps,
+    backgroundColor: 'rgb(255, 99, 132)'
+  },
+  {
+    label: 'ALS',
+    data: als_steps,
+    backgroundColor: 'rgb(100, 199, 32)'
+  },
+  {
+    label: 'SVD',
+    data: svd_steps,
+    backgroundColor: 'rgb(254, 9, 2)'
+  }
+],
+};
+
+const ctx = document.getElementById('myChart').getContext('2d');
+const myChart = new Chart(ctx, {
+    type: 'scatter',
+    data: data_steps,
+    options: {
+        scales: {
+            y: {
+                
+                title: {
+                    display: true,
+                    text: 'rmse'
+                    }
+            },
+
+            x: {
+                title: {
+                    display: true,
+                    text: 'steps'
+                    }
+            }
+            
+        }
+    }
+});
+
+
+
+
+const data_lr = {
+  datasets: [{
+    label: 'SGD',
+    data: sgd_lr,
+    backgroundColor: 'rgb(255, 99, 132)'
+  },
+  {
+    label: 'ALS',
+    data: als_lr,
+    backgroundColor: 'rgb(100, 199, 32)'
+  },
+  {
+    label: 'SVD',
+    data: svd_lr,
+    backgroundColor: 'rgb(254, 9, 2)'
+  }
+],
+};
+
+const ctx2 = document.getElementById('myChart2').getContext('2d');
+const myChart2 = new Chart(ctx2, {
+    type: 'scatter',
+    data: data_lr,
+    options: {
+        scales: {
+            y: {
+                
+                title: {
+                    display: true,
+                    text: 'rmse'
+                    }
+            },
+
+            x: {
+                title: {
+                    display: true,
+                    text: 'Learning rate'
+                    }
+            }
+            
+        }
+    }
+});
+
+
+
+  </script>
+
+
+{% endblock %}

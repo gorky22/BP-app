@@ -54,10 +54,10 @@ class DataSet:
         self.genre = False
 
         if dataset_names is not None:
-            tmp = dataset_names.rename(columns={name_item_id_name:"item_id", name:"name"})
+            tmp = dataset_names.rename(columns={name_item_id_name:"item_id", name:"name", genre:"genre"})
 
             if genre is not None:
-                self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating", genre:"genre"})
+                self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating"})
             else:
                 self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating"})
 
@@ -79,8 +79,10 @@ class DataSet:
             self.dataset = dataset.rename(columns={user:"user_id", item:"item_id", rating:"rating"})
             self.__name_and_id_item = self.dataset
         
+        tmp_dict = {"steps":None, "lr":None, "time":None}
         self.trained_result_dict = {"als":None, "sgd":None, "svd":None}
-        
+        self.hyperparams_results = {"als":tmp_dict, "sgd":tmp_dict, "svd":tmp_dict}
+        self.min = None
 
         
 
@@ -347,6 +349,11 @@ class DataSet:
                         )
         
         return optimizer
+    
+    def clear_hyperparams_result(self):
+        tmp_dict = {"steps":None, "lr":None, "time":None}
+        self.hyperparams_results = {"als":tmp_dict.copy(), "sgd":tmp_dict.copy(), "svd":tmp_dict.copy()}
+
         
     def find_hyperparams(self, alg="sgd", rating_from=0.0, rating_to=5.0):
 
@@ -356,17 +363,33 @@ class DataSet:
         if self.__train == None or self.__test == None:
             self.__train, self.__test = train_test_split(self.__surprise_dataset, 0.1)
 
+        self.clear_hyperparams_result()
+        min = 0
+
         if alg == "all" or alg == "sgd":
             self.__times = []
             opt = self.optimizer()
+    
             self.__values_sgd = [dict(opt.res[i], **{'time':self.__times[i]}) for i in range(len(opt.res))]
             min = self.min_d(self.__values_sgd)
-            min["alg"] = "svg"
+            min["alg"] = "sgd"
+            #"item_reduced":json.dumps(item_graph.reset_index().user_id.to_list()
+            self.hyperparams_results["sgd"]["steps"] = json.dumps([[self.__values_sgd[i]["target"],self.__values_sgd[i]["params"]["k"]] for i in range(len(self.__values_sgd))])
+            self.hyperparams_results["sgd"]["lr"] = json.dumps([[self.__values_sgd[i]["target"],self.__values_sgd[i]["params"]["learning_rate"]] for i in range(len(self.__values_sgd))])
+            self.hyperparams_results["sgd"]["time"] = json.dumps([[self.__values_sgd[i]["target"],self.__values_sgd[i]["time"]] for i in range(len(self.__values_sgd))])
+
         
         if alg == "all" or alg == "als":
             self.__times = []
             opt = self.optimizer(alg="als")
+     
             self.__values_als = [dict(opt.res[i], **{'time':self.__times[i]}) for i in range(len(opt.res))]
+       
+            self.hyperparams_results["als"]["steps"] = json.dumps([[self.__values_als[i]["target"],self.__values_als[i]["params"]["k"]] for i in range(len(self.__values_als))])
+            self.hyperparams_results["als"]["lr"] = json.dumps([[self.__values_als[i]["target"],self.__values_als[i]["params"]["learning_rate"]] for i in range(len(self.__values_als))])
+            self.hyperparams_results["als"]["time"] = json.dumps([[self.__values_als[i]["target"],self.__values_als[i]["time"]] for i in range(len(self.__values_als))])
+
+
             if "min" in locals():
                 tmp_min = self.min_d(self.__values_als)
                 tmp_min["alg"] = "als"
@@ -376,10 +399,19 @@ class DataSet:
                 min = self.min_d(self.__values_als)
                 min["alg"] = "als"
 
+
         if alg == "all" or alg == "svd":
             self.__times = []
             opt = self.optimizer(alg="svd")
+      
             self.__values_svd = [dict(opt.res[i], **{'time':self.__times[i]}) for i in range(len(opt.res))]
+
+
+            self.hyperparams_results["svd"]["steps"] = json.dumps([[self.__values_svd[i]["target"],self.__values_svd[i]["params"]["k"]] for i in range(len(self.__values_svd))])
+            self.hyperparams_results["svd"]["lr"] = json.dumps([[self.__values_svd[i]["target"],self.__values_svd[i]["params"]["learning_rate"]] for i in range(len(self.__values_svd))])
+            self.hyperparams_results["svd"]["time"] = json.dumps([[self.__values_svd[i]["target"],self.__values_svd[i]["time"]] for i in range(len(self.__values_svd))])
+
+
             if "min" in locals():
                 tmp_min =  self.min_d(self.__values_svd)
                 tmp_min["alg"] = "svd"
@@ -388,7 +420,12 @@ class DataSet:
             else:
                 min =  self.min_d(self.__values_svd)
                 min["alg"] = "svd"
-        return min
+
+            
+        
+        self.min  = min
+        
+        return min, self.hyperparams_results
     
     def __plot_methods(self, to_plot, type="k", ax=None):
 
@@ -444,7 +481,7 @@ class DataSet:
 
     def graphs_alghoritms(self, all=False, sgd=False, svd=False, als=False,
                           values_sgd = None, values_als = None, values_svd = None,
-                          eval=False, lr=False, time=False, save_path=None):
+                          eval=False, lr=False, time=False, save_path=None, print=False):
 
         to_plot = []
     
@@ -547,6 +584,9 @@ class DataSet:
     
     def __create_sp_dtst(self):
         reader = Reader(rating_scale=(self.dataset["rating"].min(),self.dataset["rating"].max()))
+        if self.__to_train is None:
+            self.__to_train = self.__name_and_id_item
+
         tmp = self.__to_train[["user_id", "item_id", "rating"]]
         self.__surprise_dataset = Dataset.load_from_df(df=tmp, reader=reader)
 
@@ -693,11 +733,5 @@ class DataSet:
 
         return ratings, counts
 
-
-
-    
-
-    
-        
-
-
+    def get_tmp(self):
+        return  self.hyperparams_results, self.min
