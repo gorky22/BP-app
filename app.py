@@ -320,9 +320,7 @@ def find_hyperparams():
             with open(x.path_to_dataset, 'rb') as ds:
                 dataset = pickle.load(ds)
 
-        min, a = dataset.find_hyperparams(alg=request.form.get("type"))
-        print(min)
-        
+        a = dataset.find_hyperparams(alg=request.form.get("type"))
 
         path = x.path_to_file.split("datasets/")[1].split(".")[0] + ".png"
         x.path_train_graph = "static/train_img/train_" + path
@@ -346,7 +344,7 @@ def find_hyperparams():
 
         
 
-    return render_template("tmp.html",x=min, sgd_time=a["sgd"]["time"],sgd_steps=a["sgd"]["steps"],sgd_lr=a["sgd"]["lr"],
+    return render_template("tmp.html", sgd_time=a["sgd"]["time"],sgd_steps=a["sgd"]["steps"],sgd_lr=a["sgd"]["lr"],
                                         als_time=a["als"]["time"],als_steps=a["als"]["steps"],als_lr=a["als"]["lr"],
                                         svd_time=a["svd"]["time"],svd_steps=a["svd"]["steps"],svd_lr=a["svd"]["lr"])
 
@@ -581,17 +579,15 @@ def tmp():
         with open(x.path_to_dataset, 'rb') as ds:
             dataset = pickle.load(ds)
     
-    a,min = dataset.get_tmp()
+    a = dataset.get_tmp()
 
-    if min is None:
+    if a["sgd"]["time"] is None and a["als"]["time"] and a["svd"]["time"]:
         return render_template("empty.html",
                         text="not found any stats! try it in section --Find hyperparams--")
 
-    print(a["als"]["time"])
-    print("-------------------")
-    print(a["svd"]["time"])
+    
 
-    return render_template("tmp.html",x=min, sgd_time=a["sgd"]["time"],sgd_steps=a["sgd"]["steps"],sgd_lr=a["sgd"]["lr"],
+    return render_template("tmp.html", sgd_time=a["sgd"]["time"],sgd_steps=a["sgd"]["steps"],sgd_lr=a["sgd"]["lr"],
                                         als_time=a["als"]["time"],als_steps=a["als"]["steps"],als_lr=a["als"]["lr"],
                                         svd_time=a["svd"]["time"],svd_steps=a["svd"]["steps"],svd_lr=a["svd"]["lr"])
 

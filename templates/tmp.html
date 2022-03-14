@@ -13,10 +13,11 @@
         <h1 class="txt">Results of trainig</h1>
     
         <ul class="list-group">
-            <li class="list-group-item active">minimal RMSE was {{x["target"]}}</li>
-            <li class="list-group-item">alghoritm: {{x["alg"]}}</li>
-            <li class="list-group-item">learning rate: {{x["params"]["learning_rate"]}}</li>
-            <li class="list-group-item">steps: {{x["params"]['k']}}</li>
+            <li id="rmse" class="list-group-item active"></li>
+            <li id="alg" class="list-group-item"></li>
+            <li id="lr" class="list-group-item"></li>
+            <li id="steps" class="list-group-item"></li>
+            <li id="time" class="list-group-item"></li>
             <li class="list-group-item">
     
                 <div class="btn-group" role="group" aria-label="Basic example">
@@ -45,15 +46,14 @@
                 <canvas id="myChart" ></canvas>
             </div>
             <div class="col-xs-6" style="width:50%">
-                <canvas id="myChart2" ></canvas>
-            </div>
+              <canvas id="myChart3" ></canvas>
+          </div>
         </div>
 
         <div class="row">
-            
-            <div class="col-xs-6" style="width:50%">
-                <canvas id="myChart3" ></canvas>
-            </div>
+          <div class="col-xs-6" style="width:100%">
+            <canvas id="myChart2" ></canvas>
+        </div>
         </div>
         
            
@@ -66,51 +66,169 @@
 
   <script>
 
-    if("{{ sgd_time }}" == "None") {
-        sgd_time = NaN
-        sgd_steps = NaN
-        sgd_lr = NaN
-    } else {
-        sgd_time = JSON.parse("{{ sgd_time }}")
-        sgd_steps = JSON.parse("{{ sgd_steps }}")
-        sgd_lr = JSON.parse("{{ sgd_lr }}")
+    
+
+    let min_values = {}    
+
+    let min_sgd = 1000
+    let min_svd = 1000
+    let min_als = 1000
+    
+
+    let sgd_steps = {}
+    let sgd_lr = {}
+    let sgd_time = {}
+    let svd_lr = {}
+    let svd_steps = {}
+    let svd_time = {}
+    let als_lr = {}
+    let als_steps = {}
+    let als_time = {}
+    
+
+    if("{{ sgd_time }}" != "None") {
+       
+        sgd_time = make_dict_for_scatter(JSON.parse("{{ sgd_time }}"),"sgd")
+        sgd_steps = make_dict_for_scatter(JSON.parse("{{ sgd_steps }}"),"sgd")
+        sgd_lr = make_dict_for_scatter(JSON.parse("{{ sgd_lr }}"),"sgd")
+
+    }
+
+    if("{{ als_time }}" != "None") {
+       
+        als_time = make_dict_for_scatter(JSON.parse("{{ als_time }}"),"als")
+        als_steps = make_dict_for_scatter(JSON.parse("{{ als_steps }}"),"als")
+        als_lr = make_dict_for_scatter(JSON.parse("{{ als_lr }}"),"als")
         
     }
 
-    if("{{ als_time }}" == "None") {
-        als_time = NaN
-        als_steps = NaN
-        als_lr = NaN
-    } else {
-        als_time = make_dict_for_scatter(JSON.parse("{{ als_time }}"))
-        als_steps = make_dict_for_scatter(JSON.parse("{{ als_steps }}"))
-        als_lr = make_dict_for_scatter(JSON.parse("{{ als_lr }}"))
-        
+    if("{{ svd_time }}" != "None") {
+      
+        svd_time = make_dict_for_scatter(JSON.parse("{{ svd_time }}"),"svd")
+        svd_steps = make_dict_for_scatter(JSON.parse("{{ svd_steps }}"),"svd")
+        svd_lr = make_dict_for_scatter(JSON.parse("{{ svd_lr }}"),"svd")
     }
 
-    if("{{ svd_time }}" == "None") {
-        svd_time = NaN
-        svd_steps = NaN
-        svd_lr = NaN
-    } else {
-        svd_time = make_dict_for_scatter(JSON.parse("{{ svd_time }}"))
-        svd_steps = make_dict_for_scatter(JSON.parse("{{ svd_steps }}"))
-        svd_lr = make_dict_for_scatter(JSON.parse("{{ svd_lr }}"))
-        
-    }
+    function   add_min_to_alg(alg) {
+       let min = 0
 
-    function   make_dict_for_scatter(tmp) {
-        let scatter = []
-        for (var i = 0; i < tmp.length; i++) {
-            let tmp_dic = {}
-            tmp_dic["x"] = tmp[i][0]
-            tmp_dic["y"] = tmp[i][1]
-            scatter.push(tmp_dic)
+        if (alg == "als") {
+          min = min_als
+        } else if (alg == "sgd") {
+          min = min_sgd
+        } else {
+          min = min_svd
         }
+       
+        return min
+    }
 
+    function   add_min_to_alg_2(alg,min) {
+   
+
+        if (alg == "als") {
+          min_als = min
+        } else if (alg == "sgd") {
+          min_sgd = min
+        } else {
+          min_svd = min
+        }
+       
+       
+    }
+
+    function   make_tmp_dic(dic) {
+      let tmp_dic = {}
+            
+      tmp_dic["y"] = dic[0]
+      tmp_dic["x"] = dic[1]     
+
+      return tmp_dic
+
+    }
+
+    function   make_dict_for_scatter(tmp, alg) {
+        let scatter = []
+        let min = 0
+
+        
+        
+        min = add_min_to_alg(alg)
+        tmp_min = 999
+
+        if (tmp_min < min) {
+
+          for (var i = 0; i < tmp.length; i++) {
+      
+            if (tmp[i][0] < tmp_min ) {
+              tmp_min = tmp[i][0]
+            }
+            
+            scatter.push(make_tmp_dic(tmp[i]))
+          }
+
+          add_min_to_alg_2(alg,tmp_min)
+        } else {
+
+          for (var i = 0; i < tmp.length; i++) { 
+           scatter.push(make_tmp_dic(tmp[i]))
+          
+          }
+
+        }
+        
         return scatter
     }
 
+
+   function find_index(arr, min) {
+        for (var i = 0; i < arr.length; i++) { 
+              if (arr[i]["y"] == min) {
+                return i
+              }
+          }
+   }
+
+   function get_min_dict(lr,steps,time,min) {
+     let tmp_dic = {}
+     let index = find_index(lr,min)
+     tmp_dic["lr"] = lr[index]["x"]
+     tmp_dic["steps"] = steps[index]["x"]
+     tmp_dic["time"] = time[index]["x"]
+     tmp_dic["min"] = min
+     return tmp_dic
+   }
+
+    
+    function find_min() {
+      let min = 0
+      let index = 0
+      min = Math.min.apply(Math,[min_als,min_sgd,min_svd])
+
+      if (min == min_als) {
+        min_values = get_min_dict(sgd_lr,sgd_steps,sgd_time,min)
+        min_values['alg'] = "sgd"
+      } else if (min == min_sgd) {
+        min_values = get_min_dict(als_lr,als_steps,als_time,min)
+        min_values['alg'] = "als"
+      } else {
+        min_values = get_min_dict(svd_lr,svd_steps,svd_time,min)
+        min_values['alg'] = "svd"
+      } 
+  }
+
+  window.onload = function() {
+       //when the document is finished loading, replace everything
+       //between the <a ...> </a> tags with the value of splitText
+      document.getElementById("rmse").innerHTML="RMSE: " + min_values["min"].toString()
+      document.getElementById("alg").innerHTML= "Alghoritm : " + min_values["alg"]
+      document.getElementById("lr").innerHTML= "Learning rate : " + min_values["lr"].toString()
+      document.getElementById("steps").innerHTML= "Steps : " + min_values["steps"].toString()
+      document.getElementById("time").innerHTML= "Time : " + min_values["time"].toString() + " s"
+    } 
+  find_min()
+  console.log(min_values)
+  
       
 const data_time = {
   datasets: [{
@@ -126,7 +244,7 @@ const data_time = {
   {
     label: 'SVD',
     data: svd_time,
-    backgroundColor: 'rgb(254, 9, 2)'
+    backgroundColor: 'rgb(0,0,128)'
   }
 ],
 };
@@ -136,6 +254,13 @@ const myChart3 = new Chart(ctx3, {
     type: 'scatter',
     data: data_time,
     options: {
+      responsive: true,
+       plugins: {
+        title: {
+        display: true,
+        text: 'Rmse depending on Learning time'
+        }
+      },
         scales: {
             y: {
                 
@@ -148,7 +273,7 @@ const myChart3 = new Chart(ctx3, {
             x: {
                 title: {
                     display: true,
-                    text: 'time'
+                    text: 'time in [s]'
                     }
             }
             
@@ -170,7 +295,7 @@ const data_steps = {
   {
     label: 'SVD',
     data: svd_steps,
-    backgroundColor: 'rgb(254, 9, 2)'
+    backgroundColor: 'rgb(0,0,1282)'
   }
 ],
 };
@@ -180,6 +305,13 @@ const myChart = new Chart(ctx, {
     type: 'scatter',
     data: data_steps,
     options: {
+      responsive: true,
+       plugins: {
+        title: {
+        display: true,
+        text: 'Rmse depending on steps'
+        }
+      },
         scales: {
             y: {
                 
@@ -217,7 +349,7 @@ const data_lr = {
   {
     label: 'SVD',
     data: svd_lr,
-    backgroundColor: 'rgb(254, 9, 2)'
+    backgroundColor: 'rgb(0,0,128)'
   }
 ],
 };
@@ -227,6 +359,13 @@ const myChart2 = new Chart(ctx2, {
     type: 'scatter',
     data: data_lr,
     options: {
+      responsive: true,
+       plugins: {
+        title: {
+        display: true,
+        text: 'Rmse depending on Learning rate'
+        }
+      },
         scales: {
             y: {
                 
@@ -239,7 +378,8 @@ const myChart2 = new Chart(ctx2, {
             x: {
                 title: {
                     display: true,
-                    text: 'Learning rate'
+                    text: 'Learning rate',
+                    type: 'logarithmic',
                     }
             }
             
