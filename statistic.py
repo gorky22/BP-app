@@ -493,16 +493,6 @@ class DataSet:
 
         self.__call_plots_methods(to_plot=to_plot,evaluations=eval, lr=lr, time=time, save_path=save_path)
 
-    def min_d(self, dic):
-        min = 1000
-        min_d = None
-        for it in dic:
-            if min > it["target"]:
-                min = it["target"]
-                min_d = it
-
-        return min_d
-
     def train_model_svd(self, lr=0.0005, steps=10):
 
         if self.__to_train is None:
@@ -515,7 +505,6 @@ class DataSet:
 
         algo = SVD(n_epochs=steps, lr_all=lr)
         return algo.fit(train)
-
 
     def train_model_als(self, lr=0.0005, steps=10):
 
@@ -642,9 +631,10 @@ class DataSet:
         without_user_reviews["predictions"] = without_user_reviews.apply(
                             lambda row: model.predict(uid=self.__user_id,iid=row["item_id"]).est, axis=1)
 
-        without_user_reviews.to_pickle("predictions_pkl")
+        
         top_10 = without_user_reviews.sort_values(by="predictions", ascending=False).head(10)
         rated = self.make_stats_predictions(without_user_reviews,path)
+        rated.to_pickle("predictions_pkl")
 
         top_10 = [[a]+[c]+[b] for a,b,c in zip(top_10.name.to_list() ,top_10.predictions.to_list(),top_10.genre.to_list())]
 
@@ -675,13 +665,13 @@ class DataSet:
 
         dataset = dataset.groupby("predictions").count()
 
-        ax = dataset.item_id.plot.bar()
+        #ax = dataset.item_id.plot.bar()
 
-        ax.set_xlabel("range of prediction")
-        ax.set_ylabel("number of items")
-        plt.tight_layout()
+        #ax.set_xlabel("range of prediction")
+        #ax.set_ylabel("number of items")
+        #plt.tight_layout()
         
-        fig.savefig(filename, figsize=(100, 100))
+        #fig.savefig(filename, figsize=(100, 100))
 
         return dataset
 
