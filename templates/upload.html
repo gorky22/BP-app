@@ -6,72 +6,72 @@
 {% endblock %}
 
 {% block body %}
-<div class="content">
 
-    <h1>Vitajte! </h1>
-    <h2>prosim vyberte si subor datami ktore budeme analyzovat a nasledne </h2>
+
+    <h1>Welcome! </h1>
+    <h2>Please add file/files with data, which will be analyzed</h2>
             
         <form class="row g-3 action="/upload" method="POST" enctype="multipart/form-data">
         <div class="col-md-4">
-            <label for="validationDefault01" class="form-label">Stlpec uzivatelov</label>
+            <label for="validationDefault01" class="form-label">User Column name</label>
             <input name="user_id" type="text" class="form-control" id="validationDefault01" value="user_id"  required>
         </div>
         <div class="col-md-4">
-            <label for="validationDefault02" class="form-label">Stlpec poloziek</label>
+            <label for="validationDefault02" class="form-label">Item Column name</label>
             <input name="item_id" type="text" class="form-control" id="validationDefault02" onchange="sendData(this.id)" required>
         </div>
         <div class="col-md-4">
-            <label for="validationDefaultUsername" class="form-label">Stlpec hodnoteni</label>
+            <label for="validationDefaultUsername" class="form-label">Rating Column name</label>
             <div class="input-group">
             <input name="rating" type="text" class="form-control" id="validationDefaultUsername"  aria-describedby="inputGroupPrepend2" value="rating" required>
             </div>
         </div>
         <div class="col-md-4">
-            <label for="validationDefaultUsername" class="form-label">Stlpec s nazvami poloziek (nepovine)</label>
+            <label for="validationDefaultUsername" class="form-label">Item names Column name (dataset with descriptions, optional)</label>
             <div class="input-group">
             <input name="item_names" type="text" class="form-control" id="validationDefaultUsername"  aria-describedby="inputGroupPrepend2" value="name"  >
             </div>
         </div>
         <div class="col-md-4">
-            <label for="validationDefaultUsername" class="form-label">Stlpec s id datasetu kde su nazvi (nepovine)</label>
+            <label for="validationDefaultUsername" class="form-label">Item id Column name (dataset with descriptions, optional)</</label>
             <div class="input-group">
             <input name="item_names_id" type="text" class="form-control" id="validationDefaultUsername2"  aria-describedby="inputGroupPrepend2"  >
             </div>
         </div>
         <div class="col-md-4">
-            <label for="validationDefaultUsername" class="form-label">Meno </label>
+            <label for="validationDefaultUsername" class="form-label">Name to show </label>
             <div class="input-group">
             <input name="name" type="text" class="form-control"  id="validationDefaultUsername"  aria-describedby="inputGroupPrepend2"  >
             </div>
         </div>
         <div class="col-md-4">
-            <label for="validationDefaultUsername" class="form-label">separator (nepovine)</label>
+            <label for="validationDefaultUsername" class="form-label">separator (optional)</label>
             <div class="input-group">
             <input name="separator" type="text" class="form-control" value="," id="validationDefaultUsername2"  aria-describedby="inputGroupPrepend2"  >
             </div>
         </div>
 
         <div class="col-md-4">
-            <label for="validationDefaultUsername" class="form-label">nazov stlpca pre zanre (nepovinne)</label>
+            <label for="validationDefaultUsername" class="form-label">Genre Column name (dataset with descriptions, optional)</label>
             <div class="input-group">
             <input name="genre" type="text" class="form-control" id="validationDefaultUsername2"  aria-describedby="inputGroupPrepend2"  >
             </div>
         </div>
 
         <div class="col-md-4">
-            <label for="validationDefaultUsername" class="form-label">separator pre zanre</label>
+            <label for="validationDefaultUsername" class="form-label">Separator in genre column (dataset with item descriptions, optional)</label>
             <div class="input-group">
             <input name="genre-separator" type="text" class="form-control" id="validationDefaultUsername2"  aria-describedby="inputGroupPrepend2"  >
             </div>
         </div>
 
         <div class="col-md-6">
-            <label for="validationDefault03" class="form-label">subor s datami</label>
+            <label for="validationDefault03" class="form-label">file with data</label>
             <input name="file" type="file" class="form-control" id="validationDefault03" required>
         </div>
 
         <div class="col-md-6">
-            <label for="validationDefault03" class="form-label">subor s datami kde su nazvi(nepovinne)</label>
+            <label for="validationDefault03" class="form-label">file with item descriptions (optional)</label>
             <input name="file_names" type="file" class="form-control" >
         </div>
 
@@ -79,13 +79,14 @@
            
         
         <div class="col-12">
-            <button class="btn btn-primary" type="submit">odoslat</button>
+            <button class="btn btn-primary" type="submit">Send</button>
             
         </div>
-        <p class="note">* data musia byt but v csv alebo json formate</p>
+        <p class="note">* files with data must be in csv or json format</p>
         </form>
    
-
+    
+    <!-- this flashed message code was inspirated from : https://flask.palletsprojects.com/en/2.0.x/patterns/flashing/ -->
 
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -103,7 +104,7 @@
 </div>
 
     
-</div>
+
 
 <script>
     function sendData(id) {

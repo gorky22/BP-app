@@ -13,28 +13,28 @@
         <div class="row">
             <p>in this graph we can see how many items rated how many users and how many users rated item</p>
             <div class="col-xs-6" style="width:50%">
-                <canvas id="myChart" ></canvas>
+                <canvas id="user_item_reduced_graph" ></canvas>
             </div>
             <div class="col-xs-6" style="width:50%">
-                <canvas id="myChart2" ></canvas>
+                <canvas id="item_user_reduced_graph" ></canvas>
             </div>
         </div>
         <div class="row">
             <p>in this graph we can see how many items rated how many users and how many users rated item</p>
             <div class="col-xs-6" style="width:50%">
-                <canvas id="myChart4" ></canvas>
+                <canvas id="user_item_all_graph" ></canvas>
             </div>
             <div class="col-xs-6" style="width:50%">
-                <canvas id="myChart5" ></canvas>
+                <canvas id="item_user_all_graph"></canvas>
             </div>
         </div>
         <div style="margin-top: 10%;">
             <p>in this graph we can see number of ratings</p>
-            <canvas id="myChart6" ></canvas>
+            <canvas id="ratings_stats_graph" ></canvas>
         </div>
         <div style="margin-top: 10%;">
             <p>in this graph we can see scatter how users rated items</p>
-            <canvas id="myChart3" ></canvas>
+            <canvas id="scatter_graph" ></canvas>
         </div>
            
        
@@ -48,6 +48,9 @@
 
 
   <script>
+
+// this codes for charts are taken and modificated from : https://www.chartjs.org
+
       let tmp = JSON.parse("{{ scatter }}")
 
         let scatter = []
@@ -61,8 +64,8 @@
 
     console.log(scatter)
 
-    const ctx = document.getElementById('myChart').getContext('2d');
-    const myChart = new Chart(ctx, {
+    const user_item_reduced = document.getElementById('user_item_reduced_graph').getContext('2d');
+    const user_item_reduced_graph = new Chart(user_item_reduced, {
         
     type: 'bar',
     data: {
@@ -96,8 +99,8 @@
     }
 });
 
-const ctx2 = document.getElementById('myChart2').getContext('2d');
-const myChart2 = new Chart(ctx2, {
+const item_user_reduced = document.getElementById('item_user_reduced_graph').getContext('2d');
+const item_user_reduced_graph = new Chart(item_user_reduced, {
     type: 'bar',
     data: {
         labels: ["1", "2", "3-5", "6-9", "10-15", "15-29", "30-49", "50-99", "100-199", "200-499", "500-999", ">=1000"],
@@ -135,8 +138,8 @@ const myChart2 = new Chart(ctx2, {
 
 
 
-const ctx4 = document.getElementById('myChart4').getContext('2d');
-const myChart4 = new Chart(ctx4, {
+const user_item_all = document.getElementById('user_item_all_graph').getContext('2d');
+const user_item_all_graph = new Chart(user_item_all, {
     type: 'bar',
     data: {
         labels: JSON.parse("{{ user_all_item }}"),
@@ -173,8 +176,8 @@ const myChart4 = new Chart(ctx4, {
 
 
 
-const ctx5 = document.getElementById('myChart5').getContext('2d');
-const myChart5 = new Chart(ctx5, {
+const item_user_all = document.getElementById('item_user_all_graph').getContext('2d');
+const item_user_all_graph = new Chart(item_user_all, {
     type: 'bar',
     data: {
         labels: JSON.parse("{{ item_all_user }}"),
@@ -226,8 +229,8 @@ const data = {
   }],
 };
 
-const ctx3 = document.getElementById('myChart3').getContext('2d');
-const myChart3 = new Chart(ctx3, {
+const scatter_g = document.getElementById('scatter_graph').getContext('2d');
+const scatter_graph = new Chart(scatter_g, {
     type: 'scatter',
     data: data,
     options: {
@@ -252,8 +255,8 @@ const myChart3 = new Chart(ctx3, {
 });
 
 
-const ctx6 = document.getElementById('myChart6').getContext('2d');
-const myChart6 = new Chart(ctx6, {
+const ratings_stats = document.getElementById('ratings_stats_graph').getContext('2d');
+const ratings_stats_graph = new Chart(ratings_stats, {
     type: 'bar',
     data: {
         labels: JSON.parse("{{ ratings }}"),

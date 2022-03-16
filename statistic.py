@@ -303,17 +303,23 @@ class DataSet:
 
         # this function will find optimal hyperparameters for chosen algorhitm usin library bayes_opt
 
+    # this function sets parameters for alghoritm which train model als
+
     def __bsl_options_als(self, learning_rate, evaluations):
         
         return {'method': "als",
                'n_epochs': evaluations,
                'learning_rate': learning_rate }
     
+    # this function sets parameters for alghoritm which train model sgd
+
     def __bsl_options_sgd(self, learning_rate, evaluations):
         
         return {'method': "sgd",
                'n_epochs': evaluations,
                'learning_rate': learning_rate }
+
+    # this function using lib bazesian find best suited params for alghoritms
 
     def optimizer(self, alg="sgd"):
 
@@ -350,11 +356,16 @@ class DataSet:
         
         return optimizer
     
+    
+
     def clear_hyperparams_result(self):
         tmp_dict = {"steps":None, "lr":None, "time":None}
         self.hyperparams_results = {"als":tmp_dict.copy(), "sgd":tmp_dict.copy(), "svd":tmp_dict.copy()}
 
         
+    # this function call function for finding best parameters and take result from them 
+    # to the frontend
+
     def find_hyperparams(self, alg="sgd", rating_from=0.0, rating_to=5.0):
 
         if self.__surprise_dataset == None:
@@ -543,6 +554,8 @@ class DataSet:
         train = self.__surprise_dataset.build_full_trainset()
 
         return algo.fit(trainset=train)
+
+    # this function creates from given dataset surprise dataset   
     
     def __create_sp_dtst(self):
         reader = Reader(rating_scale=(self.dataset["rating"].min(),self.dataset["rating"].max()))

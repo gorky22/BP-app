@@ -21,6 +21,8 @@ app.config["SQLALCHEMY_DATABASE_URI"] = 'sqlite:///datasets.sqlite3'
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
+# datasets and data which will be used for work with given dataset
+
 class datasets(db.Model):
     _id = db.Column("id", db.Integer, primary_key=True)
     name = db.Column("name", db.String(100))
@@ -48,11 +50,15 @@ class datasets(db.Model):
     sep = db.Column("sep", db.String(200))
 
 app.config["uploads_dataset"] = "/Users/damiangorcak/Desktop/BP-app/static/datasets"
-app.config['SECRET_KEY'] = 'anystringthatyoulike'
+app.config['SECRET_KEY'] = 'aaaa'
 
 db.create_all()
+
+# dataset is used in all function thats why global
 global dataset
-global sparsity
+
+# this function takes alghotitm, trainded model, and database on actual session and save this model to pickle
+# so program can use this model after restarting
 
 def save_model(alg, model, database):
     path_model = database.path_to_file.split("datasets/")[0] + "models/" + database.path_to_file.split("datasets/")[1].split(".")[0] + "-" + alg + "_pkl"
@@ -69,7 +75,6 @@ def index():
 @app.route("/main")
 def main():
     
-
     a = datasets.query.filter_by(name=None).all()
 
     for el in a:
@@ -94,7 +99,13 @@ def choose_dataset():
     x = datasets.query.all()
     return render_template("main.html",x=x)
 
+# this function takes as input file, name of file and param main which represent if file 
+# is file for dataset with ratings or dataset with information about item column
+
 def save_file(file,name,main=False):
+
+    # dataset with information about item column has different name
+
     if "csv" in file.content_type or "json" in file.content_type:
         if main:
             file.save(app.config["uploads_dataset"] + "/names_" + name )
@@ -104,6 +115,11 @@ def save_file(file,name,main=False):
             return os.path.join(app.config["uploads_dataset"], name)
     else:
         return None
+
+# this function takes as input format of file (only csv and json are supprted)
+# separator for dataset (default is ',')
+# and given columns names
+# returns dataframe if everithing ok and None if format is not csv or json or if columns are not in dataset
 
 def get_df_and_check_columns(content_type,path_to_file,separator, user_col=None,item_col=None,rating_col=None,names_col=None, name_id=None, genre=None):
    
@@ -158,6 +174,8 @@ def upload():
             genre = request.form.get("genre")
             genre_separator = request.form.get("genre-separator")
 
+            # when genre column is given we need also separator
+
             if request.form.get("genre") is not None and request.form.get("genre-separator") == False:
                 genre = None
 
@@ -167,7 +185,7 @@ def upload():
             file_names = request.files["file_names"]
             global dataset 
             if file_names is not None and names_col is None:
-                flash(u'dataset s menami zadany ale nazov stlpca s menami nieje zadany', 'error')
+                flash(u'Dataset with names is entered but column names not!', 'error')
                 return render_template("upload.html")
         
             if genre is None or genre == "":
@@ -188,11 +206,13 @@ def upload():
             path_to_file_names = None
             df_names = None
 
+            # here we are creating dataset acording how many files given and which columns
+
             if file_names is not None:
                 path_to_file_names = save_file(file_names,file_path,main=True)
 
                 if path_to_file_names is None:
-                    flash(u'data s menami niesu ani v json ani v csv formate', 'error')
+                    flash(u'Data are not in csv or json format (dataset with names)', 'error')
                     datasets.query.filter_by(_id=new._id).delete()
                     return render_template("upload.html")
                 
@@ -203,12 +223,12 @@ def upload():
 
                 if df_names is None:
                     datasets.query.filter_by(_id=new._id).delete()
-                    flash(u'zadane stlpce (dataset s menami) niesu v zadanom datasete', 'error')
+                    flash(u'One or more Entered column names not found in dataset (dataset with names)', 'error')
                     return render_template("upload.html")
 
             if path_to_file is None :
                 datasets.query.filter_by(_id=new._id).delete()
-                flash(u'data niesu ani v json ani v csv formate', 'error')
+                flash(u'Data are not in csv or json format', 'error')
                 return render_template("upload.html")
             
             pkl_path_dataset =  path_to_file.split(".")[0] + "_datasets.pkl"
@@ -227,7 +247,7 @@ def upload():
 
                 if df is None:
                     datasets.query.filter_by(_id=new._id).delete()
-                    flash(u'zadane stlpce niesu v zadanom datasete', 'error')
+                    flash(u'One or more Entered column names not found in dataset', 'error')
                     return render_template("upload.html")
 
                 dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col)
@@ -236,7 +256,7 @@ def upload():
 
             if df is None:
                 datasets.query.filter_by(_id=new._id).delete()
-                flash(u'zadane stlpce niesu v zadanom datasete', 'error')
+                flash(u'One or more Entered column names not found in dataset', 'error')
                 return render_template("upload.html")
 
 
@@ -249,120 +269,44 @@ def upload():
 
                 dataset.save(pkl_path_dataset)
             
-            flash(u'data uspesne ulozene', 'ok')
-
-            
-            print("new.name")
+            flash(u'Data succesfully added', 'ok')
             
             db.session.commit() 
             session["df"] = new.name
-        
-            
-    
+      
     return render_template("upload.html")
-
-@app.route("/statistic")
-def statistic():
-
-    if session.get("df") is None:
-        return render_template("empty.html", 
-                text="Nieje zadany ziaden subor s datami, prosim vlozte how v zalozke 'add data'")
-    else:
-        x = datasets.query.filter_by(name=session["df"]).all()[0]
-
-        if x.path_img_stats_sparsity is not None:
-            return render_template("stats.html", x=datasets.query.filter_by(name=session["df"]).all()[0])
-        else:
-            return render_template("statistic.html")
-
-@app.route("/get_statistic", methods=["GET"])
-def get_statistic():
-    global dataset
-
-    x = datasets.query.filter_by(name=session["df"]).all()[0]
-
-    if x.path_img_stats_sparsity is None:
-        #print("tu1")
-        #print(x.path_to_file)
-        #print(x.item_row)
-        if not "dataset" in globals():
-            with open(x.path_to_dataset, 'rb') as ds:
-                dataset = pickle.load(ds)
-
-        #print("tu2")
-        x.sparsity = '{:.2f}%'.format(dataset.sparsity())
-        #print("tu3")
-        name = x.path_to_file.split("datasets/")[1].split(".")[0] + ".png"
-        #print("tu4")
-        x.path_img_stats_all = "static/img/all_" + name
-        x.path_img_stats_reduced = "static/img/reduced_" + name
-        x.path_img_stats_scatter = "static/img/scatter_" + name
-        x.path_img_stats_sparsity = "static/img/sparsity_" + x.path_to_file.split("datasets/")[1].split(".")[0] + ".jpg"
-        db.session.commit()
-        #print("tu5")
-        dataset.sparsity_graph(
-            fig_location=x.path_img_stats_sparsity
-        )
-
-
-        dataset.ratings_graph(all=True, all_path=x.path_img_stats_all,
-                            scatter=True, scatter_path=x.path_img_stats_scatter,
-                            reduced=True, reduced_path=x.path_img_stats_reduced )
-
-        return render_template("stats.html", x=x)
-
-    return render_template("stats.html",x=x)
 
 @app.route("/train")
 def train():
     if session.get("df") is None:
         return render_template("empty.html", 
-                text="Nieje zadany ziaden subor s datami, prosim vlozte how v zalozke 'add data'")
+                text="File with data not found ! Please add one in section 'add data'")
     else:
-        x = datasets.query.filter_by(name=session["df"]).all()[0]
-        #if x.path_train_graph is not None:
-            #return render_template("train_stats.html", x=x)
 
         return render_template("train.html")
 
 @app.route("/find_hyperparams", methods=["GET","POST"])
 def find_hyperparams():
-    #print("hello")
+
 
     global dataset
 
     x = datasets.query.filter_by(name=session["df"]).all()[0]
-    #print(x.path_train_graph)
+
     if request.method == "POST":
-        #print("hello")
         if not "dataset" in globals():
             with open(x.path_to_dataset, 'rb') as ds:
                 dataset = pickle.load(ds)
 
+        #getting data and train model 
         a = dataset.find_hyperparams(alg=request.form.get("type"))
 
         path = x.path_to_file.split("datasets/")[1].split(".")[0] + ".png"
         x.path_train_graph = "static/train_img/train_" + path
         
-
-        if request.form.get("type") == "als":
-            dataset.graphs_alghoritms(als=True, 
-                                lr=True,   time=True, eval=True,save_path=x.path_train_graph)
-        elif request.form.get("type") == "sgd":
-            dataset.graphs_alghoritms(sgd=True, 
-                                lr=True,   time=True, eval=True,save_path=x.path_train_graph)
-        elif request.form.get("type") == "svd":
-            dataset.graphs_alghoritms(svd=True, 
-                                lr=True,   time=True, eval=True,save_path=x.path_train_graph)
-        else:
-            dataset.graphs_alghoritms(sgd=True, als=True, svd=True,
-                                lr=True,   time=True, eval=True,save_path=x.path_train_graph)
-        
-        dataset.save(x.path_to_dataset)
         db.session.commit()
 
-        
-
+    
     return render_template("tmp.html", sgd_time=a["sgd"]["time"],sgd_steps=a["sgd"]["steps"],sgd_lr=a["sgd"]["lr"],
                                         als_time=a["als"]["time"],als_steps=a["als"]["steps"],als_lr=a["als"]["lr"],
                                         svd_time=a["svd"]["time"],svd_steps=a["svd"]["steps"],svd_lr=a["svd"]["lr"])
@@ -372,7 +316,7 @@ def train_model():
 
     if session.get("df") is None:
         return render_template("empty.html", 
-                text="Nieje zadany ziaden subor s datami, prosim vlozte how v zalozke 'add data'")
+                text="File with data not found ! Please add one in section 'add data'")
 
     if request.method == "POST":
 
@@ -390,6 +334,7 @@ def train_model():
 
         lr = float(request.form.get("lr"))
 
+        # here choodse and train model acording to chosend alghoritm
         if alg == "svd":
             model = dataset.train_model_svd(lr=lr, steps=int(request.form.get("steps")))
 
@@ -407,15 +352,21 @@ def train_model():
             if model is None:
                 return render_template("no_rewiews.html")
 
+        # finding prediction for added data
+
         dataset.find_predictions(path, model=model, alg=alg.lower())
+
+        # data for render and show 
 
         results = dataset.get_data_to_render_result(alg=alg.lower())
 
         # save class because new dict is apended
 
-        dataset.save(path)
+        dataset.save(x.path_to_dataset)
         db.session.commit()
 
+        # if genre was adeed we render another graphs
+        
         if x.had_genre:
             dataset.find_predictions_genre(path, model=model, alg=alg.lower())
         else:
@@ -428,7 +379,7 @@ def train_model():
                             ranges=results["ranges"], values=results["values"],genres_hist=results["genres_hist"],
                             values_hist=results["values_hist"])
         else:
-            return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
+            return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], 
                             ranges=results["ranges"], values=results["values"])
 
        
@@ -440,7 +391,7 @@ def train_model():
 def recomend():
     if session.get("df") is None:
         return render_template("empty.html", 
-                text="Nieje zadany ziaden subor s datami, prosim vlozte how v zalozke 'add data'")
+                text="File with data not found ! Please add one in section 'add data'")
     else:
         x = datasets.query.filter_by(name=session["df"]).all()[0]
         global dataset
@@ -522,19 +473,20 @@ def make_recomendation():
         # save class because new dict is apended
 
         dataset.save(x.path_to_dataset)
-        
+        db.session.commit()
+
         if results is None:
             return render_template("empty.html",
-                        text="pre tento algoritmus nieje vytrenovany model")
+                        text="Trained model is not found, for this algorithm")
 
-        db.session.commit()
+        
 
     if x.had_genre:
         return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
                             ranges=results["ranges"], values=results["values"],genres_hist=results["genres_hist"],
                             values_hist=results["values_hist"])
     else:
-        return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
+        return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], 
                             ranges=results["ranges"], values=results["values"])
 
 @app.route("/als_results")
@@ -550,14 +502,14 @@ def als_results():
         
     if results is None:
         return render_template("empty.html",
-                        text="pre tento algoritmus nieje vytrenovany model")
+                        text="Trained model is not found, for this algorithm")
     else:
         if x.had_genre:
             return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
                             ranges=results["ranges"], values=results["values"],genres_hist=results["genres_hist"],
                             values_hist=results["values_hist"])
         else:
-            return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
+            return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], 
                             ranges=results["ranges"], values=results["values"])
 
 @app.route("/sgd_results")
@@ -573,14 +525,14 @@ def sgd_results():
 
     if results is None:
         return render_template("empty.html",
-                        text="pre tento algoritmus nieje vytrenovany model")
+                        text="Trained model is not found, for this algorithm")
     else:
         if x.had_genre:
             return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
                             ranges=results["ranges"], values=results["values"],genres_hist=results["genres_hist"],
                             values_hist=results["values_hist"])
         else:
-            return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
+            return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], 
                             ranges=results["ranges"], values=results["values"])
 
 @app.route("/svd_results")
@@ -592,18 +544,21 @@ def svd_results():
             dataset = pickle.load(ds)
     
     results = dataset.get_data_to_render_result(alg="svd")
+    print("hret")
+    print(results)
   
     if results is None:
         return render_template("empty.html",
-                        text="pre tento algoritmus nieje vytrenovany model")
+                        text="Trained model is not found, for this algorithm")
     else:
         if x.had_genre:
             return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
                             ranges=results["ranges"], values=results["values"],genres_hist=results["genres_hist"],
                             values_hist=results["values_hist"])
         else:
-            return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
+            return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], 
                             ranges=results["ranges"], values=results["values"])
+
 @app.route("/charts")
 def charts():
     x = datasets.query.filter_by(name=session["df"]).all()[0]
@@ -632,6 +587,11 @@ def charts():
 
 @app.route("/tmp")
 def tmp():
+
+    if session.get("df") is None:
+        return render_template("empty.html", 
+                text="File with data not found ! Please add one in section 'add data'")
+
     x = datasets.query.filter_by(name=session["df"]).all()[0]
     global dataset
     if not "dataset" in globals():
@@ -643,8 +603,6 @@ def tmp():
     if a["sgd"]["time"] == None and a["als"]["time"] == None and a["svd"]["time"] == None:
         return render_template("empty.html",
                         text="not found any stats! try it in section --Find hyperparams--")
-
-    
  
     return render_template("tmp.html", sgd_time=a["sgd"]["time"],sgd_steps=a["sgd"]["steps"],sgd_lr=a["sgd"]["lr"],
                                         als_time=a["als"]["time"],als_steps=a["als"]["steps"],als_lr=a["als"]["lr"],

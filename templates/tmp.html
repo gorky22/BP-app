@@ -43,16 +43,16 @@
           <div class="row">
             
             <div class="col-xs-6" style="width:50%">
-                <canvas id="myChart" ></canvas>
+                <canvas id="steps_graph" ></canvas>
             </div>
             <div class="col-xs-6" style="width:50%">
-              <canvas id="myChart3" ></canvas>
+              <canvas id="time_graph" ></canvas>
           </div>
         </div>
 
         <div class="row">
           <div class="col-xs-6" style="width:100%">
-            <canvas id="myChart2" ></canvas>
+            <canvas id="lr_graph" ></canvas>
         </div>
         </div>
         
@@ -66,6 +66,7 @@
 
   <script>
 
+    // this codes for charts are taken and modificated from : https://www.chartjs.org
     
 
     let min_values = {}    
@@ -252,8 +253,8 @@ const data_time = {
 ],
 };
 
-const ctx3 = document.getElementById('myChart3').getContext('2d');
-const myChart3 = new Chart(ctx3, {
+const lr_g = document.getElementById('lr_graph').getContext('2d');
+const lr_graph = new Chart(lr_g, {
     type: 'scatter',
     data: data_time,
     options: {
@@ -303,8 +304,8 @@ const data_steps = {
 ],
 };
 
-const ctx = document.getElementById('myChart').getContext('2d');
-const myChart = new Chart(ctx, {
+const steps_g = document.getElementById('steps_graph').getContext('2d');
+const steps_graph = new Chart(steps_g, {
     type: 'scatter',
     data: data_steps,
     options: {
@@ -357,8 +358,8 @@ const data_lr = {
 ],
 };
 
-const ctx2 = document.getElementById('myChart2').getContext('2d');
-const myChart2 = new Chart(ctx2, {
+const time_g = document.getElementById('time_graph').getContext('2d');
+const time_graph = new Chart(time_g, {
     type: 'scatter',
     data: data_lr,
     options: {

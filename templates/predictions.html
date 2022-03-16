@@ -3,6 +3,7 @@
 {% block head %}
 <title>Upload file</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+
 {% endblock %}
 
 {% block body %}
@@ -60,7 +61,7 @@
 
 
         <div>
-          <canvas id="myChart" ></canvas>
+          <canvas id="item__rating_graph" ></canvas>
         </div>
   
 
@@ -69,20 +70,22 @@
 </div>
 
 <script>
-  let x = "{{ ranges }}"
 
-  x = x.substring(1, x.length-1).split("&#34;")
-  x = x.filter(el => (el != "" && el != ", "))
+// this codes for charts are taken and modificated from : https://www.chartjs.org
+let x = "{{ ranges }}"
+
+x = x.substring(1, x.length - 1).split("&#34;")
+x = x.filter(el => (el != "" && el != ", "))
 
 
-  const ctx = document.getElementById('myChart').getContext('2d');
-const myChart = new Chart(ctx, {
+const item__rating = document.getElementById('item__rating_graph').getContext('2d');
+const item__rating_graph = new Chart(item__rating, {
     type: 'bar',
     data: {
         labels: x,
         datasets: [{
             label: 'num of items',
-            data:  JSON.parse("{{ values }}"),
+            data: JSON.parse("{{ values }}"),
             borderColor: 'rgb(102,139,255)',
             backgroundColor: 'rgb(102,139,255)',
             borderWidth: 1
@@ -95,21 +98,19 @@ const myChart = new Chart(ctx, {
                 title: {
                     display: true,
                     text: 'predicted items - ranges'
-                    }
+                }
             },
 
             x: {
                 title: {
                     display: true,
                     text: 'range of ratings'
-                    }
+                }
             }
-            
+
         }
     }
 });
-
-
 </script>
 
 {% endblock %}
