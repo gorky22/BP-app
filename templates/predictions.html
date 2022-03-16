@@ -83,7 +83,8 @@ const myChart = new Chart(ctx, {
         datasets: [{
             label: 'num of items',
             data:  JSON.parse("{{ values }}"),
-            
+            borderColor: 'rgb(102,139,255)',
+            backgroundColor: 'rgb(102,139,255)',
             borderWidth: 1
         }]
     },

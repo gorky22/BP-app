@@ -58,16 +58,20 @@
             tmp_dic["y"] = tmp[i][0]
             scatter.push(tmp_dic)
             }
+
     console.log(scatter)
-const ctx = document.getElementById('myChart').getContext('2d');
-const myChart = new Chart(ctx, {
+
+    const ctx = document.getElementById('myChart').getContext('2d');
+    const myChart = new Chart(ctx, {
+        
     type: 'bar',
     data: {
         labels: ["1", "2", "3-5", "6-9", "10-15", "15-29", "30-49", "50-99", "100-199", "200-499", "500-999", ">=1000"],
         datasets: [{
             label: 'number of rated items',
             data: JSON.parse("{{ user_reduced }}"),
-            
+            borderColor: 'rgb(102,139,255)',
+            backgroundColor: 'rgb(102,139,255)',
             borderWidth: 1
         }]
     },
@@ -100,7 +104,8 @@ const myChart2 = new Chart(ctx2, {
         datasets: [{
             label: 'how many users',
             data: JSON.parse("{{ item_reduced }}"),
-            
+            borderColor: 'rgb(102,139,255)',
+            backgroundColor: 'rgb(102,139,255)',
             borderWidth: 1
         }]
     },
@@ -138,7 +143,8 @@ const myChart4 = new Chart(ctx4, {
         datasets: [{
             label: 'number of rated items',
             data: JSON.parse("{{ user_all_user }}"),
-            
+            borderColor: 'rgb(102,139,255)',
+            backgroundColor: 'rgb(102,139,255)',
             borderWidth: 1
         }]
     },
@@ -175,7 +181,8 @@ const myChart5 = new Chart(ctx5, {
         datasets: [{
             label: 'number users',
             data: JSON.parse("{{ item_all_item }}"),
-            
+            borderColor: 'rgb(102,139,255)',
+            backgroundColor: 'rgb(102,139,255)',
             borderWidth: 1
         }]
     },
@@ -214,7 +221,8 @@ const data = {
   datasets: [{
     label: 'how many users rated rated',
     data: scatter,
-    backgroundColor: 'rgb(255, 99, 132)'
+    borderColor: 'rgb(102,139,255)',
+    backgroundColor: 'rgb(102,139,255)'
   }],
 };
 
@@ -252,7 +260,8 @@ const myChart6 = new Chart(ctx6, {
         datasets: [{
             label: 'number of ratings ',
             data: JSON.parse("{{ counts }}"),
-            
+            backgroundColor: 'rgb(102,139,255)',
+            borderColor: 'rgb(102,139,255)',
             borderWidth: 1
         }]
     },

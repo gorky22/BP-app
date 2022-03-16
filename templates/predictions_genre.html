@@ -2,7 +2,7 @@
 
 {% block head %}
 <title>Upload file</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script
 {% endblock %}
 
 {% block body %}
@@ -59,24 +59,71 @@
     </tbody>
 </table>
     </div>
-
-
         <div>
           <canvas id="myChart" ></canvas>
         </div>
-  
+        <div class="row">
+          <p>in this graph we can see how many items rated how many users and how many users rated item</p>
+          <div class="col-xs-6" style="width:50%">
+            <canvas id="myChart2" ></canvas>
+          </div>
+          <div class="col-xs-6" style="width:50%">
+            <canvas id="myChart3" ></canvas>
+          </div>
+      </div>
 
-
-    
 </div>
 
 <script>
+
+  function make_str_from_py(data) {
+    data = data.substring(1, data.length-1).replace("&#39;", "\'").split("&#34;")
+    return data.filter(el => (el != "" && el != ", "))
+  }
+
   let x = "{{ ranges }}"
+  let genres_hist = "{{genres_hist}}"
+  let values_hist = JSON.parse("{{values_hist}}")
+  let values_hist_percentages = JSON.parse("{{values_hist}}")
 
-  x = x.substring(1, x.length-1).split("&#34;")
-  x = x.filter(el => (el != "" && el != ", "))
+  x= make_str_from_py(x)
+  genres_hist = make_str_from_py(genres_hist)
 
+  function make_percentages(data) {
+    let tmp = data
+    let count = 0
+    for (var i = 0; i < data[0].length; i++) {
+      count = 0
+      for (var j = 0; j < data.length; j++) {
+        count = count + data[j][i]
+      }
+      
+      for (var j = 0; j < data.length; j++) {
+        tmp[j][i] = ((data[j][i]/count) * 100).toFixed(2)
+     
+      }
+     
+    }
 
+  }
+
+  make_percentages(values_hist_percentages)
+
+  y = JSON.parse("{{ values }}")
+  let data = shape_data(x,y)
+  function shape_data(x,y) {
+    let data = []
+        for (var i = 0; i < x.length; i++) {
+          let tmp_dic = {}
+              tmp_dic["x"] = x[i]
+              tmp_dic["y"] = y[i]
+              data.push(tmp_dic)
+              }
+        return data
+  }
+
+  console.log(genres_hist)
+  console.log("{{values_hist}}")
   const ctx = document.getElementById('myChart').getContext('2d');
 const myChart = new Chart(ctx, {
     type: 'bar',
@@ -84,8 +131,9 @@ const myChart = new Chart(ctx, {
         labels: x,
         datasets: [{
             label: 'num of items',
-            data:  JSON.parse("{{ values }}"),
-            
+            data:  data,
+            borderColor: 'rgb(102,139,255)',
+            backgroundColor: 'rgb(102,139,255)',
             borderWidth: 1
         }]
     },
@@ -106,8 +154,123 @@ const myChart = new Chart(ctx, {
                     }
             }
             
+        },
+        onClick(e) {
+          const activePoints = myChart.getElementsAtEventForMode(e, 'nearest', {
+            intersect: true
+          }, false)
+          const [{
+            index
+          }] = activePoints;
+           
+            myChart2.data.datasets.pop();
+            myChart2.data.datasets.push({
+
+            labels: genres_hist,
+            
+            label: 'num of items for range : ' + x[index],
+            data:  values_hist_percentages[index],
+            borderColor: 'rgb(102,139,255)',
+            backgroundColor: 'rgb(102,139,255)',
+            text: 'num of rated items'
+          
+              
+            })
+            
+            myChart3.data.datasets.pop();
+            myChart3.data.datasets.push({
+
+            labels: genres_hist,
+            
+            label: 'num of items for range : ' + x[index],
+            data:  values_hist[index],
+            borderColor: 'rgb(102,139,255)',
+            backgroundColor: 'rgb(102,139,255)',
+            text: 'num of rated items'
+          
+              
+            })
+          myChart2.update();
+          myChart3.update();
+          console.log(data[index]);
+          console.log(values_hist[index]);
         }
     }
+    
+
+});
+
+
+const ctx2 = document.getElementById('myChart2').getContext('2d');
+const myChart2 = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+        labels: genres_hist,
+        datasets: [{
+            label: 'num of items for range : ' + x[0],
+            data:  values_hist_percentages[0],
+            borderColor: 'rgb(102,139,255)',
+            backgroundColor: 'rgb(102,139,255)',
+            text: 'num of rated items'
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'predicted items - genres (in percentage)'
+                    }
+            },
+
+            x: {
+                title: {
+                    display: true,
+                    text: 'genre'
+                    }
+            }
+            
+        }
+    }
+    
+
+});
+
+const ctx3 = document.getElementById('myChart3').getContext('2d');
+const myChart3 = new Chart(ctx3, {
+    type: 'bar',
+    data: {
+        labels: genres_hist,
+        datasets: [{
+            label: 'num of items for range : ' + x[0],
+            data:  values_hist[0],
+            borderColor: 'rgb(102,139,255)',
+            backgroundColor: 'rgb(102,139,255)',
+            text: 'num of rated items'
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'predicted items - genres'
+                    }
+            },
+
+            x: {
+                title: {
+                    display: true,
+                    text: 'genre'
+                    }
+            }
+            
+        }
+    }
+    
+
 });
 
 

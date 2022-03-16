@@ -20,7 +20,7 @@ from surprise import BaselineOnly
 from surprise import Dataset
 import math
 import json
-
+import itertools
 
 # in this function we can load datased and make some statistic
 # dataset is loaded dataset in pandas
@@ -49,7 +49,7 @@ class DataSet:
     __user_id = None
     
 
-    def __init__(self, dataset, user, item, rating, name=None, dataset_names=None, name_item_id_name=None, genre=None):
+    def __init__(self, dataset, user, item, rating, name=None, dataset_names=None, name_item_id_name=None, genre=None, sep=None):
         
         self.genre = False
 
@@ -82,7 +82,7 @@ class DataSet:
         tmp_dict = {"steps":None, "lr":None, "time":None}
         self.trained_result_dict = {"als":None, "sgd":None, "svd":None}
         self.hyperparams_results = {"als":tmp_dict, "sgd":tmp_dict, "svd":tmp_dict}
-
+        self.sep=sep
 
         
 
@@ -634,7 +634,9 @@ class DataSet:
         
         top_10 = without_user_reviews.sort_values(by="predictions", ascending=False).head(10)
         rated = self.make_stats_predictions(without_user_reviews,path)
-        rated.to_pickle("predictions_pkl")
+        without_user_reviews.to_pickle("predictions_pkl")
+
+        genres_to_hist, values_to_hist = self.get_data_for_genre_hist(without_user_reviews)
 
         top_10 = [[a]+[c]+[b] for a,b,c in zip(top_10.name.to_list() ,top_10.predictions.to_list(),top_10.genre.to_list())]
 
@@ -645,7 +647,8 @@ class DataSet:
         rated = [[a]+[b] for a,b in zip(rated.reset_index().predictions.astype("str").to_list() ,rated.item_id.to_list())]
         
      
-        self.trained_result_dict[alg] = {"top_10":top_10,"rated":rated,"ranges":rated_graph_ranges,"values":rated_graph_values}
+        self.trained_result_dict[alg] = {"top_10":top_10,"rated":rated,"ranges":rated_graph_ranges,"values":rated_graph_values,
+                                         "genres_hist":genres_to_hist, "values_hist":values_to_hist}
 
     def make_stats_predictions(self, dataset, filename):
         ranges = []
@@ -690,6 +693,8 @@ class DataSet:
         counts = []
         dc = self.dataset["rating"].value_counts().to_dict()
 
+        print(dc)
+
         for key in sorted(dc):
             ratings.append(key)
             counts.append(dc[key])
@@ -697,5 +702,29 @@ class DataSet:
         return ratings, counts
 
     def get_tmp(self):
-    
         return  self.hyperparams_results
+
+    def get_data_for_genre_hist(self,data) :
+        data.loc[data["genre"] == None, 'genre'] = 'No genre'
+        data = data.groupby(["predictions","genre"]).count().reset_index()
+
+        ### split !!!!!!!!!!!!!!
+        ranges_values  = [list([p,a,c] for a in g.split(self.sep)) for p,g,c in zip(data.reset_index().predictions.astype("str").to_list(),data.genre.astype("str").to_list(),data.item_id.to_list())]
+
+        merged = list(itertools.chain.from_iterable(ranges_values))
+
+        dict = {'range': [], 'genre': [], 
+        'val': []}
+        for range, genre, value in merged:
+            dict["range"].append(range)
+            dict["genre"].append(genre)
+            dict["val"].append(value)
+
+        tmp_df = pd.DataFrame(dict)
+        a = tmp_df.groupby(["range","genre"]).sum().reset_index()
+        x = pd.pivot_table(a,columns="genre",values="val",index="range")
+
+        values = [a[1:] for a in x.reset_index().values.tolist()] 
+        genres = x.columns.to_list()
+        
+        return   json.dumps(genres), values

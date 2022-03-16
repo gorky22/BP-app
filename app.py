@@ -68,7 +68,16 @@ def index():
 
 @app.route("/main")
 def main():
+    
+
+    a = datasets.query.filter_by(name=None).all()
+
+    for el in a:
+        db.session.delete(el)
+
     x = datasets.query.all()
+    db.session.commit()
+
     return render_template("main.html",x=x)
 
 @app.route("/choose_dataset", methods=["POST"])
@@ -77,6 +86,7 @@ def choose_dataset():
     global dataset
 
     x = datasets.query.filter_by(name=session["df"]).all()[0]
+    
     with open(x.path_to_dataset, 'rb') as ds:
         dataset = pickle.load(ds)
 
@@ -96,27 +106,27 @@ def save_file(file,name,main=False):
         return None
 
 def get_df_and_check_columns(content_type,path_to_file,separator, user_col=None,item_col=None,rating_col=None,names_col=None, name_id=None, genre=None):
+   
     if "csv" in content_type:
         df = pd.read_csv(path_to_file, sep=separator ,encoding='latin-1', on_bad_lines='skip',)
     else:
         df = pd.read_json(path_to_file, lines=True)
 
-    if names_col == None:
-
+    if names_col is None:
         if  not all(x in list(df.columns) for x in [user_col, item_col, rating_col]):
             return None
         else :
             return df
     
     else:
-
-        if user_col == None:
-            if genre == None:
+        if user_col is None:
+            if genre is None:
                 if  not all(x in list(df.columns) for x in [names_col]):
-                    return None
+                    return None               
                 else :
                     return df
             else:
+
                 if  not all(x in list(df.columns) for x in [names_col,genre]):
                     return None
                 else :
@@ -159,16 +169,19 @@ def upload():
             if file_names is not None and names_col is None:
                 flash(u'dataset s menami zadany ale nazov stlpca s menami nieje zadany', 'error')
                 return render_template("upload.html")
-
-            if genre != False:
-                new = datasets(user_row=user_col, item_row=item_col, rating=rating_col, names_row=names_col, had_genre=True, sep=genre_separator)
-            else:
+        
+            if genre is None or genre == "":
                 new = datasets(user_row=user_col, item_row=item_col, rating=rating_col, names_row=names_col)
+            else:
+                new = datasets(user_row=user_col, item_row=item_col, rating=rating_col, names_row=names_col, had_genre=True, sep=genre_separator)
 
+            
             db.session.add(new)
-      
+            db.session.commit() 
 
-            file_path = file.filename.split(".")[0] + str(new._id) + "." + file.filename.split(".")[1]
+            new.name = name + str(new._id)
+            
+            file_path = file.filename.split(".")[0] +  str(new._id) + "." + file.filename.split(".")[1]
 
 
             path_to_file = save_file(file,file_path)
@@ -180,6 +193,7 @@ def upload():
 
                 if path_to_file_names is None:
                     flash(u'data s menami niesu ani v json ani v csv formate', 'error')
+                    datasets.query.filter_by(_id=new._id).delete()
                     return render_template("upload.html")
                 
                 if new.had_genre:
@@ -188,10 +202,12 @@ def upload():
                     df_names = get_df_and_check_columns(file_names.content_type,path_to_file=path_to_file_names,separator=sep,names_col=names_col,name_id=name_id_col)
 
                 if df_names is None:
+                    datasets.query.filter_by(_id=new._id).delete()
                     flash(u'zadane stlpce (dataset s menami) niesu v zadanom datasete', 'error')
                     return render_template("upload.html")
 
             if path_to_file is None :
+                datasets.query.filter_by(_id=new._id).delete()
                 flash(u'data niesu ani v json ani v csv formate', 'error')
                 return render_template("upload.html")
             
@@ -210,6 +226,7 @@ def upload():
                 df = get_df_and_check_columns(file.content_type,path_to_file=path_to_file,separator=sep,user_col=user_col,item_col=item_col,rating_col=rating_col)
 
                 if df is None:
+                    datasets.query.filter_by(_id=new._id).delete()
                     flash(u'zadane stlpce niesu v zadanom datasete', 'error')
                     return render_template("upload.html")
 
@@ -218,6 +235,7 @@ def upload():
                 dataset.save(pkl_path_dataset)
 
             if df is None:
+                datasets.query.filter_by(_id=new._id).delete()
                 flash(u'zadane stlpce niesu v zadanom datasete', 'error')
                 return render_template("upload.html")
 
@@ -225,7 +243,7 @@ def upload():
             if df_names is not None:
                 
                 if new.had_genre:
-                    dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col,name=names_col,dataset_names=df_names, name_item_id_name=name_id_col, genre=genre)
+                    dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col,name=names_col,dataset_names=df_names, name_item_id_name=name_id_col, genre=genre,sep=genre_separator)
                 else:
                     dataset = DataSet(dataset=df,user=user_col,item=item_col,rating=rating_col,name=names_col,dataset_names=df_names, name_item_id_name=name_id_col)
 
@@ -234,7 +252,8 @@ def upload():
             flash(u'data uspesne ulozene', 'ok')
 
             
-            new.name = name + str(new._id)
+            print("new.name")
+            
             db.session.commit() 
             session["df"] = new.name
         
@@ -395,12 +414,22 @@ def train_model():
         # save class because new dict is apended
 
         dataset.save(path)
-        
-        if results is None:
-            return render_template("empty.html",
-                        text="pre tento algoritmus nieje vytrenovany model")
+        db.session.commit()
+
+        if x.had_genre:
+            dataset.find_predictions_genre(path, model=model, alg=alg.lower())
         else:
-            return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], path=results["path"])
+            dataset.find_predictions(path, model=model, alg=alg.lower())
+
+        results = dataset.get_data_to_render_result(alg=alg.lower())
+
+        if x.had_genre:
+            return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
+                            ranges=results["ranges"], values=results["values"],genres_hist=results["genres_hist"],
+                            values_hist=results["values_hist"])
+        else:
+            return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
+                            ranges=results["ranges"], values=results["values"])
 
        
     return render_template("train_model.html")
@@ -449,21 +478,35 @@ def make_recomendation():
         if request.form.get("ALS") is not None:
             alg = "ALS"
             #print(dataset.make_dat_with_name(json.loads(request.form.get(alg))))
+            dataset.make_dat_with_name(json.loads(request.form.get(alg)))
             model = dataset.train_model_als()
             x.path_to_model_als = save_model(alg.lower(),model,x)
 
         elif request.form.get("SVD") is not None:
             alg = "SVD"
             #print(dataset.make_dat_with_name(json.loads(request.form.get(alg))))
+            dataset.make_dat_with_name(json.loads(request.form.get(alg)))
             model = dataset.train_model_svd()
             x.path_to_model_svd = save_model(alg.lower(),model,x)
 
-        else:
+        elif request.form.get("SGD") is not None:
             alg = "SGD"
            
             dataset.make_dat_with_name(json.loads(request.form.get(alg)))
             model = dataset.train_model_sgd()
             x.path_to_model_sgd = save_model(alg.lower(),model,x)
+        else:
+            dataset.make_dat_with_name(json.loads(request.form.get("any")))
+
+            dataset.save(x.path_to_dataset)
+            db.session.commit()
+
+            if not x.had_genre:
+                min, max, data= dataset.get_items()
+                return render_template("recomend.html",min=min, max=max, data=data)
+            else :
+                min, max, data= dataset.get_items_genre()
+                return render_template("recomend_genre.html",min=min, max=max, data=data)
             
 
         path = x.path_to_file.split("datasets/")[0] + "predicted/" + x.path_to_file.split("datasets/")[1].split(".")[0] + "_" + alg + "_predicted.png"
@@ -488,7 +531,8 @@ def make_recomendation():
 
     if x.had_genre:
         return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
-                            ranges=results["ranges"], values=results["values"])
+                            ranges=results["ranges"], values=results["values"],genres_hist=results["genres_hist"],
+                            values_hist=results["values_hist"])
     else:
         return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
                             ranges=results["ranges"], values=results["values"])
@@ -508,8 +552,13 @@ def als_results():
         return render_template("empty.html",
                         text="pre tento algoritmus nieje vytrenovany model")
     else:
-        return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], 
-                                    ranges=results["ranges"], values=results["values"])
+        if x.had_genre:
+            return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
+                            ranges=results["ranges"], values=results["values"],genres_hist=results["genres_hist"],
+                            values_hist=results["values_hist"])
+        else:
+            return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
+                            ranges=results["ranges"], values=results["values"])
 
 @app.route("/sgd_results")
 def sgd_results():
@@ -526,8 +575,13 @@ def sgd_results():
         return render_template("empty.html",
                         text="pre tento algoritmus nieje vytrenovany model")
     else:
-        return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], 
-                                    ranges=results["ranges"], values=results["values"])
+        if x.had_genre:
+            return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
+                            ranges=results["ranges"], values=results["values"],genres_hist=results["genres_hist"],
+                            values_hist=results["values_hist"])
+        else:
+            return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
+                            ranges=results["ranges"], values=results["values"])
 
 @app.route("/svd_results")
 def svd_results():
@@ -543,8 +597,13 @@ def svd_results():
         return render_template("empty.html",
                         text="pre tento algoritmus nieje vytrenovany model")
     else:
-        return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"],
-                                ranges=results["ranges"], values=results["values"])
+        if x.had_genre:
+            return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
+                            ranges=results["ranges"], values=results["values"],genres_hist=results["genres_hist"],
+                            values_hist=results["values_hist"])
+        else:
+            return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
+                            ranges=results["ranges"], values=results["values"])
 @app.route("/charts")
 def charts():
     x = datasets.query.filter_by(name=session["df"]).all()[0]
@@ -581,12 +640,12 @@ def tmp():
     
     a = dataset.get_tmp()
 
-    if a["sgd"]["time"] is None and a["als"]["time"] and a["svd"]["time"]:
+    if a["sgd"]["time"] == None and a["als"]["time"] == None and a["svd"]["time"] == None:
         return render_template("empty.html",
                         text="not found any stats! try it in section --Find hyperparams--")
 
     
-
+ 
     return render_template("tmp.html", sgd_time=a["sgd"]["time"],sgd_steps=a["sgd"]["steps"],sgd_lr=a["sgd"]["lr"],
                                         als_time=a["als"]["time"],als_steps=a["als"]["steps"],als_lr=a["als"]["lr"],
                                         svd_time=a["svd"]["time"],svd_steps=a["svd"]["steps"],svd_lr=a["svd"]["lr"])

@@ -91,7 +91,7 @@
         sgd_time = make_dict_for_scatter(JSON.parse("{{ sgd_time }}"),"sgd")
         sgd_steps = make_dict_for_scatter(JSON.parse("{{ sgd_steps }}"),"sgd")
         sgd_lr = make_dict_for_scatter(JSON.parse("{{ sgd_lr }}"),"sgd")
-
+        console.log(sgd_lr)
     }
 
     if("{{ als_time }}" != "None") {
@@ -183,15 +183,19 @@
 
    function find_index(arr, min) {
         for (var i = 0; i < arr.length; i++) { 
+          
               if (arr[i]["y"] == min) {
                 return i
               }
           }
+        
+        console.log(min)
    }
 
    function get_min_dict(lr,steps,time,min) {
      let tmp_dic = {}
      let index = find_index(lr,min)
+ 
      tmp_dic["lr"] = lr[index]["x"]
      tmp_dic["steps"] = steps[index]["x"]
      tmp_dic["time"] = time[index]["x"]
@@ -206,11 +210,11 @@
       min = Math.min.apply(Math,[min_als,min_sgd,min_svd])
 
       if (min == min_als) {
-        min_values = get_min_dict(sgd_lr,sgd_steps,sgd_time,min)
-        min_values['alg'] = "sgd"
-      } else if (min == min_sgd) {
         min_values = get_min_dict(als_lr,als_steps,als_time,min)
         min_values['alg'] = "als"
+      } else if (min == min_sgd) {
+        min_values = get_min_dict(sgd_lr,sgd_steps,sgd_time,min)
+        min_values['alg'] = "sgd"
       } else {
         min_values = get_min_dict(svd_lr,svd_steps,svd_time,min)
         min_values['alg'] = "svd"
@@ -218,8 +222,7 @@
   }
 
   window.onload = function() {
-       //when the document is finished loading, replace everything
-       //between the <a ...> </a> tags with the value of splitText
+       
       document.getElementById("rmse").innerHTML="RMSE: " + min_values["min"].toString()
       document.getElementById("alg").innerHTML= "Alghoritm : " + min_values["alg"]
       document.getElementById("lr").innerHTML= "Learning rate : " + min_values["lr"].toString()
