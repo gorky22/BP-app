@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<title>Recommendation system</title>
+
+
+{% endblock %}
+
+{% block body %}
+<div class="container">
+
+    <div >
+    
+        <table class="table thead-dar">
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">name</th>
+                <th scope="col">recomendation of given user</th>
+                <th scope="col">prediction</th>
+              </tr>
+            </thead>
+            <tbody>
+        {% for item in data[1] %}
+
+        <tr>
+            
+            <th scope="row">{{ loop.index }}</th>
+            <td>{{item}}</td>
+            <td>{{data[0][loop.index - 1]}}</td>
+            <td>{{data[2][loop.index - 1]}}</td>
+          </tr>
+
+        {% endfor %}
+   
+    </tbody>
+</table>
+
+
+    </div>
+
+
+
+
+
+{% endblock %}

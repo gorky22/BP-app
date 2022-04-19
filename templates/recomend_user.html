@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/recomend.css') }}">
+<title>Recommendation system</title>
+{% endblock %}
+
+{% block body %}
+<div class="container">
+    <h1>Please add some recomendations</h1>
+    <div class="conten">
+        <form action="/make_for_user" method="post">
+        <div class="send_btn">
+        <button type="submit"  id="send_btn_svd" name="SVD" onclick="sendData(this.id)" class="btn btn-primary">SVD</button>
+        <button type="submit"  id="send_btn_als" name="ALS" onclick="sendData(this.id)" class=" btn btn-primary">ALS</button>
+        <button type="submit"  id="send_btn_sgd" name="SGD" onclick="sendData(this.id)" class="btn btn-primary">SGD</button>
+        <button type="submit"  id="send_btn_any" name="any" onclick="sendData(this.id)" class="btn btn-primary">Just add data</button>
+        </div>
+        
+        {% for item in data %}
+       <div class="slider">
+        <a  class="x btn input-block-level">{{item[1]}} <br> rating: {{item[2]}}</a>
+            <div class="row-xs-6">
+                <input type="range" class="form-range" id={{item[0]}} name="{{item[1]}}" min={{min - 0.5}} max={{max}} step="0.5" value={{min - 0.5}} 
+                                onchange="myFunction(this.value,this.id,this.name,'{{item[2]}}')" 
+                                oninput="(this.value == '{{min - 0.5}}' ) ? this.nextElementSibling.value = 'non rated' :this.nextElementSibling.value = this.value ">
+                <output class="btn btn-primary output" name ={{item[0]}} onclick="copy('{{item[0]}}','{{item[2]}}')">non rated</output>
+            </div>
+          
+        </div>
+        {% endfor %}
+        </form>
+    </div>
+
+  
+</div>
+
+<script>
+    var dict = {};
+    var min = '{{min - 0.5}}'
+
+function myFunction(value,id,name, genres) {
+        if (value == min) {
+            delete dict[id];
+        } else {
+            dict[id] = [name,value,genres]
+        }
+
+        console.log(dict)
+        
+}
+
+function sendData(id) {
+ 
+        document.getElementById(id).value = JSON.stringify(dict);
+    }
+
+    function copy(id,value) {
+        if (value == min) {
+            delete dict[id];
+        } else {
+            dict[id] = [document.getElementById(id).getAttribute('name') ,value,value]
+        }
+        document.getElementById(id).nextElementSibling.value = value
+        document.getElementById(id).value = JSON.stringify(dict);
+}
+
+  
+
+</script>
+
+{% endblock %}

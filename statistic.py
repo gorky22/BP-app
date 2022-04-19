@@ -1,4 +1,6 @@
 from venv import create
+from numpy import int64
+import numpy
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
@@ -180,7 +182,6 @@ class DataSet:
                 counter += 1
 
         return ax
-
     # plot scatter
 
     def __plot_scatter(self, occurencies_item, path):
@@ -410,6 +411,8 @@ class DataSet:
             self.hyperparams_results["svd"]["time"] = json.dumps([[self.__values_svd[i]["target"],self.__values_svd[i]["time"]] for i in range(len(self.__values_svd))])
 
         return self.hyperparams_results
+
+     ## actualy not working but for future  using
     
     def __plot_methods(self, to_plot, type="k", ax=None):
 
@@ -438,6 +441,7 @@ class DataSet:
 
         ax.legend()
 
+     ## actualy not working but for future  using
 
     def __call_plots_methods(self, to_plot=None, evaluations=False, lr=False, time=False, save_path=None):
         
@@ -462,6 +466,7 @@ class DataSet:
         if save_path != None:
             plt.savefig(save_path)
 
+    ## actualy not working but for future  using
 
     def graphs_alghoritms(self, all=False, sgd=False, svd=False, als=False,
                           values_sgd = None, values_als = None, values_svd = None,
@@ -502,7 +507,7 @@ class DataSet:
         
             to_plot.append({"alg":"sgd","data":values_sgd})
 
-        self.__call_plots_methods(to_plot=to_plot,evaluations=eval, lr=lr, time=time, save_path=save_path)
+        self.__call_plots_methods(to_plot=to_plot,evaluations=eval, lr=lr, time=time, save_path="tmp.png")
 
     def train_model_svd(self, lr=0.0005, steps=10):
 
@@ -565,6 +570,8 @@ class DataSet:
         tmp = self.__to_train[["user_id", "item_id", "rating"]]
         self.__surprise_dataset = Dataset.load_from_df(df=tmp, reader=reader)
 
+    # get min rating, max rating and columns name, user_id, item_id
+
     def get_items(self):
         if self.__name_and_id_item is not None:
             x = self.__name_and_id_item.groupby(["item_id","name"]).count()
@@ -573,6 +580,7 @@ class DataSet:
             
             return self.dataset["rating"].min(), self.dataset["rating"].max(), x[["item_id", "name"]].values.tolist()
 
+    # get min rating, max rating and columns name, user_id, item_id, genre
     def get_items_genre(self):
         if self.__name_and_id_item is not None:
             x = self.__name_and_id_item.groupby(["item_id","name","genre"]).count()
@@ -580,6 +588,8 @@ class DataSet:
             x = x.sample(n=100)
             
             return self.dataset["rating"].min(), self.dataset["rating"].max(), x[["item_id", "name", "genre"]].values.tolist()
+
+    # make temporary dataframe where is also name of item
 
     def make_dat_with_name(self, data_to_add):
         if self.__user_id is None:
@@ -602,12 +612,18 @@ class DataSet:
                 dict['genre'].append(data_to_add[key][2])
             
         tmp_df = pd.DataFrame(dict)
-        self.__to_train = pd.concat([self.__to_train, tmp_df], ignore_index = True, axis = 0)   
+        self.__to_train = pd.concat([self.__to_train, tmp_df], ignore_index = True, axis = 0)  
+        #self.__to_train  = pd.read_csv("mov.csv")
+        self.__to_train.to_csv("mv.csv")
+        
+        print(self.__user_id)
 
+    # prediction stats if dataset doesnt had genre
+    #     
     def find_predictions(self,path, model=None, alg=None):
         user_reviews = self.__to_train.loc[self.__to_train["user_id"] == self.__user_id]["item_id"].to_list()
 
-        without_user_reviews = self.__to_train[~self.__to_train["item_id"].isin(user_reviews)][["item_id","name"]].drop_duplicates()
+        without_user_reviews = self.__to_train.loc[~self.__to_train["item_id"].isin(user_reviews)][["item_id","name"]].drop_duplicates()
 
         # if dataset is tooo big it brings just first 1M elements
 
@@ -632,10 +648,12 @@ class DataSet:
         self.trained_result_dict[alg] = {"top_10":top_10,"rated":rated,"ranges":rated_graph_ranges,"values":rated_graph_values}
         #print(self.trained_result_dict[alg])
 
+    # prediction stats if dataset had genre
+
     def find_predictions_genre(self,path, model=None, alg=None):
         user_reviews = self.__to_train.loc[self.__to_train["user_id"] == self.__user_id]["item_id"].to_list()
 
-        without_user_reviews = self.__to_train[~self.__to_train["item_id"].isin(user_reviews)][["item_id","name","genre"]].drop_duplicates()
+        without_user_reviews = self.__to_train.loc[~self.__to_train["item_id"].isin(user_reviews)][["item_id","name","genre"]].drop_duplicates()
 
         # if dataset is tooo big it brings just first 1M elements
 
@@ -662,6 +680,10 @@ class DataSet:
      
         self.trained_result_dict[alg] = {"top_10":top_10,"rated":rated,"ranges":rated_graph_ranges,"values":rated_graph_values,
                                          "genres_hist":genres_to_hist, "values_hist":values_to_hist}
+        
+        #print(self.trained_result_dict[alg])
+
+    # stats for hyper params
 
     def make_stats_predictions(self, dataset, filename):
         ranges = []
@@ -691,7 +713,10 @@ class DataSet:
 
         return dataset
 
+    # results from finding hyperparams
+
     def get_data_to_render_result(self, alg=None):
+
         if self.trained_result_dict[alg] is None:
             return None
         else:
@@ -700,6 +725,8 @@ class DataSet:
     def save(self, file_handler):
         with open(file_handler, 'wb') as pickle_file:
             pickle.dump(self, pickle_file)
+
+    # get counts of each scale rating 
 
     def get_counts(self):
         ratings = []
@@ -714,14 +741,21 @@ class DataSet:
 
         return ratings, counts
 
+    # statistic from recomendation
+
     def get_tmp(self):
+        #with open("tmp2.pkl", 'wb') as files:
+        #    pickle.dump(self.hyperparams_results, files)
+        self.__to_train.to_csv('mv.csv')
+        print(self.__user_id)
         return  self.hyperparams_results
+
+    # statistic from recomendation
 
     def get_data_for_genre_hist(self,data) :
         data.loc[data["genre"] == None, 'genre'] = 'No genre'
         data = data.groupby(["predictions","genre"]).count().reset_index()
 
-        ### split !!!!!!!!!!!!!!
         ranges_values  = [list([p,a,c] for a in g.split(self.sep)) for p,g,c in zip(data.reset_index().predictions.astype("str").to_list(),data.genre.astype("str").to_list(),data.item_id.to_list())]
 
         merged = list(itertools.chain.from_iterable(ranges_values))
@@ -735,9 +769,60 @@ class DataSet:
 
         tmp_df = pd.DataFrame(dict)
         a = tmp_df.groupby(["range","genre"]).sum().reset_index()
+        a.to_csv('1.csv')
         x = pd.pivot_table(a,columns="genre",values="val",index="range")
 
         values = [a[1:] for a in x.reset_index().values.tolist()] 
         genres = x.columns.to_list()
         
         return   json.dumps(genres), values
+
+    def delete_user_ratings(self) :
+        self.__to_train = self.__name_and_id_item
+     
+    # get list of top 10 raters
+
+    def get_top_ids(self) :
+        self.__to_train = self.__name_and_id_item
+        counts =  self.__to_train.groupby("user_id").count().sort_values(by=['item_id'], ascending=False)
+        tmp = []
+        for i in range(1,10):
+            x = counts.loc[counts.item_id < i*10].head(1).reset_index().user_id.values
+            if x.size != 0:
+                tmp.append([x[0],counts.loc[counts.item_id < i*10].head(1).item_id.values[0]])
+        return tmp
+    
+    # get rantings from specific user
+
+    def get_users_ratings(self,id):
+
+        if dict(self.__to_train.dtypes)["user_id"] == 'float64' or dict(self.__to_train.dtypes)["user_id"] == 'float':
+            x = self.__to_train.loc[self.__to_train.user_id == float(id)]
+        elif dict(self.__to_train.dtypes)["user_id"] == 'int64':
+            x = self.__to_train.loc[self.__to_train.user_id == int(float(id))]
+        else:
+            x = self.__to_train.loc[self.__to_train.user_id == id]
+
+        return self.dataset["rating"].min(), self.dataset["rating"].max(), x[["item_id", "name", "rating"]].values.tolist()
+
+    # find predictions comparing to some specific user
+
+    def find_predictions_user(self, model=None, id=None):
+        user_reviews = self.__to_train.loc[self.__to_train["user_id"] == self.__user_id]["item_id"].to_list()
+        print(user_reviews)
+        print(type(user_reviews[0]))
+        if dict(self.__to_train.dtypes)["user_id"] == 'float64':
+            copyer_rewiews = self.__to_train.loc[self.__to_train["user_id"] == float(id)]
+            user_reviews = list(map(float, user_reviews))
+        elif dict(self.__to_train.dtypes)["user_id"] == 'int64':
+            copyer_rewiews = self.__to_train.loc[self.__to_train["user_id"] == int(float(id))]
+            user_reviews = list(map(int, user_reviews))
+        else:
+            copyer_rewiews = self.__to_train.loc[self.__to_train["user_id"] == id]
+
+        copyer_rewiews = copyer_rewiews.loc[~copyer_rewiews.item_id.isin(user_reviews)][["item_id","name","rating"]].drop_duplicates()
+
+        copyer_rewiews["predictions"] = copyer_rewiews.apply(
+                            lambda row: model.predict(uid=self.__user_id,iid=row["item_id"]).est, axis=1)
+
+        return copyer_rewiews["name"].to_list(), copyer_rewiews["rating"].to_list(), copyer_rewiews["predictions"].to_list()

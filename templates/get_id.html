@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/upload.css') }}">
+<title>Recommendation system</title>
+{% endblock %}
+
+{% block body %}
+
+
+    <h1>Welcome! </h1>
+    <h2>Please add id of user whose recomendations you want</h2>
+    <div class="content">
+        <form class="row g-3" action="/render_another_user" method="post">
+        <div class="col-md-4">
+            <label for="validationDefault01" class="form-label">ID of user you want to test</label>
+            <input name="user_id" type="text" class="form-control" id="validationDefault01"  required>
+        </div>
+            <button class="btn btn-primary" type="submit">Send</button>
+        </form>
+
+        {% for item in data %}
+     
+        <button class="btn btn-primary" value={{item[0]}} type="submit" onclick="myFunction(this.value)" >user who rated {{item[1]}} items</button>
+          
+     
+        {% endfor %}
+    </div>
+
+<script>
+    function myFunction(id) {
+        document.getElementById("validationDefault01").value = id;
+    }
+</script>
+
+{% endblock %}
