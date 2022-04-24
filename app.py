@@ -697,11 +697,11 @@ def make_for_user():
         path = x.path_to_file.split("datasets/")[0] + "predicted/" + x.path_to_file.split("datasets/")[1].split(".")[0] + "_" + alg + "_predicted.png"
        
 
-        name,orig,predict = dataset.find_predictions_user(model=model, id=id)
+        name,orig,predict,rmse = dataset.find_predictions_user(model=model, id=id)
         
     data = [orig,name,predict]
 
-    return render_template("prediction_user.html",data=data)
+    return render_template("prediction_user.html",data=data, rmse=rmse)
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -19,3 +19,5 @@ mv.csv
 tmp2.pkl
 xx.pkl
 movie_item.zip
+bin
+datasets.sqlite3

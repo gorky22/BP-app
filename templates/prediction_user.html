@@ -18,6 +18,7 @@
                 <th scope="col">name</th>
                 <th scope="col">recomendation of given user</th>
                 <th scope="col">prediction</th>
+                <th scope="col">RMSE</th>
               </tr>
             </thead>
             <tbody>
@@ -29,6 +30,7 @@
             <td>{{item}}</td>
             <td>{{data[0][loop.index - 1]}}</td>
             <td>{{data[2][loop.index - 1]}}</td>
+            <td>{{rmse}}</td>
           </tr>
 
         {% endfor %}

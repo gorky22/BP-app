@@ -23,12 +23,15 @@ from surprise import Dataset
 import math
 import json
 import itertools
+import sklearn
 
 # in this function we can load datased and make some statistic
 # dataset is loaded dataset in pandas
 # user is name of user column in dataset
 # item is name of item column in dataset
 # rating is name of rating column in dataset
+# genre is name of genre column in dataset
+# name is name of item name column in dataset
 
 class DataSet:
 
@@ -36,18 +39,47 @@ class DataSet:
     # so we initialize it once and second time we dont need to
 
     __interaction_matrix = None
+
+    # variables where is saved splitted dataset for testing and training model on dataset
     __train = None
     __test = None
+
+    # time from tuning hyperparams
+
     __times = None
+
+    # params for finding hyperparams
+
     __tuning_params = { "k": [1,100],
                         "learning_rate": [0.001, 0.02]
                         }
+    
+    # save values from finding hyperparams for algorithm svd
+
     __values_svd = None
+
+    # save values from finding hyperparams for algorithm als
+
     __values_als = None
+
+    # save values from finding hyperparams for algorithm sgd
+
     __values_sgd = None
+
+    # surprise needed create own dataframe so we need to save it for reusing
+
     __surprise_dataset = None
+
+    # temporary dataframe for save dataset where are also columns with metadata for item
+
     __name_and_id_item = None
+
+    # dataset which will be used for training and testing model on dataset
+
     __to_train = None
+
+    # id which will be made for user who will use this app
+
     __user_id = None
     
 
@@ -182,7 +214,8 @@ class DataSet:
                 counter += 1
 
         return ax
-    # plot scatter
+
+    # plot scatter graph
 
     def __plot_scatter(self, occurencies_item, path):
 
@@ -200,7 +233,8 @@ class DataSet:
             plt.savefig(path)
 
         return {"scatter":json.dumps([[a]+[b] for a,b in zip(tmp.number_of_ratings.to_list() ,tmp.item_id.to_list())])}
-    # plot reduced
+
+    # plot reduced graph
 
     def __plot_reduced(self, occurencies_user, occurencies_item, path):
 
@@ -224,7 +258,7 @@ class DataSet:
                 "item_all":{"user":json.dumps(item_ratings.user_id.to_list()),
                             "item":json.dumps(item_ratings.item_id.to_list())}}
 
-    # plot reduced
+    # plot reduced graph
 
     def __plot_all(self, occurencies_user, occurencies_item, path):
 
@@ -358,6 +392,7 @@ class DataSet:
         return optimizer
     
     
+    # this function clear dict where result of finding hyperparams is stored
 
     def clear_hyperparams_result(self):
         tmp_dict = {"steps":None, "lr":None, "time":None}
@@ -509,6 +544,8 @@ class DataSet:
 
         self.__call_plots_methods(to_plot=to_plot,evaluations=eval, lr=lr, time=time, save_path="tmp.png")
 
+    # train model with svd algorithm
+
     def train_model_svd(self, lr=0.0005, steps=10):
 
         if self.__to_train is None:
@@ -521,6 +558,8 @@ class DataSet:
 
         algo = SVD(n_epochs=steps, lr_all=lr)
         return algo.fit(train)
+    
+    # train model with als algorithm
 
     def train_model_als(self, lr=0.0005, steps=10):
 
@@ -540,6 +579,8 @@ class DataSet:
         train = self.__surprise_dataset.build_full_trainset()
 
         return algo.fit(trainset=train)
+
+    # train model with sgd algorithm
     
     def train_model_sgd(self, lr=0.0005, steps=10):
 
@@ -614,7 +655,7 @@ class DataSet:
         tmp_df = pd.DataFrame(dict)
         self.__to_train = pd.concat([self.__to_train, tmp_df], ignore_index = True, axis = 0)  
         #self.__to_train  = pd.read_csv("mov.csv")
-        self.__to_train.to_csv("mv.csv")
+        #self.__to_train.to_csv("mv.csv")
         
         print(self.__user_id)
 
@@ -769,7 +810,7 @@ class DataSet:
 
         tmp_df = pd.DataFrame(dict)
         a = tmp_df.groupby(["range","genre"]).sum().reset_index()
-        a.to_csv('1.csv')
+
         x = pd.pivot_table(a,columns="genre",values="val",index="range")
 
         values = [a[1:] for a in x.reset_index().values.tolist()] 
@@ -824,5 +865,10 @@ class DataSet:
 
         copyer_rewiews["predictions"] = copyer_rewiews.apply(
                             lambda row: model.predict(uid=self.__user_id,iid=row["item_id"]).est, axis=1)
+        
+        mse = sklearn.metrics.mean_squared_error(copyer_rewiews["rating"].to_list(), copyer_rewiews["predictions"].to_list())
 
-        return copyer_rewiews["name"].to_list(), copyer_rewiews["rating"].to_list(), copyer_rewiews["predictions"].to_list()
+        rmse = math.sqrt(mse)
+
+
+        return copyer_rewiews["name"].to_list(), copyer_rewiews["rating"].to_list(), copyer_rewiews["predictions"].to_list(), rmse
