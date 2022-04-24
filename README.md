@@ -30,4 +30,14 @@ Predictions are inputed with toggle buttons in section find predictions. User ca
 
 <img width="350" alt="ukazka" src="https://user-images.githubusercontent.com/57815724/164978451-132975fd-7fac-46f9-b930-714a5219de45.png">
 
+User also can "copy" some ratings from user in dataset (not copy all rating but some are left blank for finding how well model works). User add Id of some user in dataset, then page with his ratings are shown User will copy some of them. After that user will choose which algorithm will be used for predictions and finally table with non rated items is shown (table with columns: item name, original rating from user we are copying, predicted values and RMSE):
+
+<img width="1024" alt="Snímka obrazovky 2022-04-24 o 15 30 35" src="https://user-images.githubusercontent.com/57815724/164978913-635dc787-758c-49b8-81ec-1bf66bfae3d9.png
+                                                                     
+<img width="1372" alt="Snímka obrazovky 2022-04-24 o 15 30 57" src="https://user-images.githubusercontent.com/57815724/164978936-1646f40b-ae81-4415-894e-d10900f8f70a.png">
+
+<img width="1391" alt="Snímka obrazovky 2022-04-24 o 15 35 01" src="https://user-images.githubusercontent.com/57815724/164979080-75f84a25-3f87-475f-afff-fb2d68c6e936.png">
+
+
+
 
