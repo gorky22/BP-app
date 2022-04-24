@@ -22,6 +22,7 @@ Then in tab "statistic" we can see maded statistic. for example:
 //user-images.githubusercontent.com/57815724/164978012-4934c51f-a402-4afe-aa1e-2b4d7a250a53.png">
 
 in section "find hyperparameter" we can find optimal values of Learning rate and number of Steps. Results are stored and can be shown in section result-hyperparams. Result is shown in picture below.
+
 <img width="607" alt="Snímka obrazovky 2022-04-24 o 15 11 44" src="https://user-images.githubusercontent.com/57815724/164978207-8214e127-6e5c-43ab-bb5b-1b7fc0a1f441.png">
 
 Predictions are inputed with toggle buttons in section find predictions. User can add rating for randomly generated 100 items from dataset, and can choose which algorithm use for making prediction (algorithms are called with learning rate 0.005 and number of steps 30) or can just add rating to dataset and in section "train model"  train model with adding custom parameters (learning rate and number of steps). After creating model and making predictions statistics are shown. 
