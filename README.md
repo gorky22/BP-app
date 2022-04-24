@@ -16,7 +16,7 @@ First we must add file with datasets.
 
 Then in tab "statistic" we can see maded statistic. for example: 
 
-<img width="713" alt="Snímka obrazovky 2022-04-24 o 15 04 54" src="https://user-images.githubusercontent.com/57815724/164978003-202c99b8-363e-4d9e-a988-e64416a550d4.png">
+<img width="769" alt="Snímka obrazovky 2022-04-24 o 15 05 27" src="https://user-images.githubusercontent.com/57815724/164978535-4d673eb0-76e5-4fea-bacd-fb9d7d1ff99a.png">
 
 <img width="769" alt="Snímka obrazovky 2022-04-24 o 15 05 27" src="https:<img width="811" alt="Snímka obrazovky 2022-04-24 o 15 05 36" src="https://user-images.githubusercontent.com/57815724/164978013-df31560c-e262-4a47-8cb3-543c117ba4fa.png">
 //user-images.githubusercontent.com/57815724/164978012-4934c51f-a402-4afe-aa1e-2b4d7a250a53.png">
