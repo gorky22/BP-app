@@ -17,17 +17,17 @@ First we must add file with datasets.
 Then in tab "statistic" we can see statistic about this dataset.
 
 <img width="769" alt="Snímka obrazovky 2022-04-24 o 15 05 27" src="https://user-images.githubusercontent.com/57815724/164978535-4d673eb0-76e5-4fea-bacd-fb9d7d1ff99a.png">
-/form for input dataset into app.
+
 
 <img width="811" alt="Snímka obrazovky 2022-04-24 o 15 05 36" src="https://user-images.githubusercontent.com/57815724/164978569-4bb63325-a5b0-4037-a2ca-56921b2e8c2c.png">
-/statistic from dataset made by this app
+
 
 in section "find hyperparameter" we can find optimal values of Learning rate and number of Steps. Results are stored and can be shown in section result-hyperparams. Result is shown in picture below.
 
 <img width="607" alt="Snímka obrazovky 2022-04-24 o 15 11 44" src="https://user-images.githubusercontent.com/57815724/164978207-8214e127-6e5c-43ab-bb5b-1b7fc0a1f441.png">
-/statistic from hyperparameters tunning
 
-Predictions are inputed with toggle buttons in section find predictions. User can add rating for randomly generated 100 items from dataset, and can choose which algorithm use for making prediction (algorithms are called with learning rate 0.005 and number of steps 30) or can just add rating to dataset and in section "train model"  train model with adding custom parameters (learning rate and number of steps). After creating model and making predictions statistics are shown. 
+
+Predictions are added with toggle buttons in section find predictions. User can add rating for randomly generated 100 items from dataset, and can choose which algorithm use for making prediction (algorithms are called with learning rate 0.005 and number of steps 30) or can just add rating to dataset and in section "train model"  train model with adding custom parameters (learning rate and number of steps). When ratings are added and model is tranined statistics are shown. 
 
 <img width="1293" alt="odp" src="https://user-images.githubusercontent.com/57815724/164978446-2a3b92d4-af48-4da9-8d39-828dad93ec73.png">
 /adding ratings in this app
@@ -42,6 +42,8 @@ User also can "copy" some ratings from user in dataset (not copy all rating but 
 <img width="1372" alt="Snímka obrazovky 2022-04-24 o 15 30 57" src="https://user-images.githubusercontent.com/57815724/164978936-1646f40b-ae81-4415-894e-d10900f8f70a.png">
 
 <img width="1391" alt="Snímka obrazovky 2022-04-24 o 15 35 01" src="https://user-images.githubusercontent.com/57815724/164979080-75f84a25-3f87-475f-afff-fb2d68c6e936.png">
+
+## need to install
 
 
 
