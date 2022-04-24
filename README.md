@@ -18,8 +18,7 @@ Then in tab "statistic" we can see maded statistic. for example:
 
 <img width="769" alt="Snímka obrazovky 2022-04-24 o 15 05 27" src="https://user-images.githubusercontent.com/57815724/164978535-4d673eb0-76e5-4fea-bacd-fb9d7d1ff99a.png">
 
-<img width="769" alt="Snímka obrazovky 2022-04-24 o 15 05 27" src="https:<img width="811" alt="Snímka obrazovky 2022-04-24 o 15 05 36" src="https://user-images.githubusercontent.com/57815724/164978013-df31560c-e262-4a47-8cb3-543c117ba4fa.png">
-//user-images.githubusercontent.com/57815724/164978012-4934c51f-a402-4afe-aa1e-2b4d7a250a53.png">
+<img width="811" alt="Snímka obrazovky 2022-04-24 o 15 05 36" src="https://user-images.githubusercontent.com/57815724/164978569-4bb63325-a5b0-4037-a2ca-56921b2e8c2c.png">
 
 in section "find hyperparameter" we can find optimal values of Learning rate and number of Steps. Results are stored and can be shown in section result-hyperparams. Result is shown in picture below.
 
