@@ -44,19 +44,15 @@ User also can "copy" some ratings from user in dataset (not copy all rating but 
 <img width="1391" alt="Snímka obrazovky 2022-04-24 o 15 35 01" src="https://user-images.githubusercontent.com/57815724/164979080-75f84a25-3f87-475f-afff-fb2d68c6e936.png">
 
 ## Dependencies
-Dependencies
-
-scikit-learn requires:
-
-Python (>= 3.8)
-NumPy (>= 1.17.3)
-SciPy (>= 1.3.2)
-matplotlib (>= 3.3.2)
-Pandas (>= 1.4.1)
-scikit-learn (>=  1.0.2)
-Flask
-flask_sqlalchemy
-pickle
+-Python (>= 3.8)
+-NumPy (>= 1.17.3)
+-SciPy (>= 1.3.2)
+-matplotlib (>= 3.3.2)
+-Pandas (>= 1.4.1)
+-scikit-learn (>=  1.0.2)
+-Flask
+-flask_sqlalchemy
+-pickle
 
 
 
