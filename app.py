@@ -1,3 +1,13 @@
+#!/usr/bin/env python3  Line 1
+# -*- coding: utf-8 -*- Line 2
+#----------------------------------------------------------------------------
+# Created By  : Damián Gorčák
+# Created Date: 27.12.2021
+# ---------------------------------------------------------------------------
+# This is app for Bachelor thesis. In this module backend is made. 
+# ---------------------------------------------------------------------------
+
+
 from flask import Flask, render_template, request, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from sklearn import datasets

@@ -1,3 +1,12 @@
+#!/usr/bin/env python3  Line 1
+# -*- coding: utf-8 -*- Line 2
+#----------------------------------------------------------------------------
+# Created By  : Damián Gorčák
+# Created Date: 27.12.2021
+# ---------------------------------------------------------------------------
+# In this module dataset is processed. Here statistic is made, predictions, statistic about predictions.
+# ---------------------------------------------------------------------------
+
 from venv import create
 from numpy import int64
 import numpy
