@@ -654,10 +654,7 @@ class DataSet:
             
         tmp_df = pd.DataFrame(dict)
         self.__to_train = pd.concat([self.__to_train, tmp_df], ignore_index = True, axis = 0)  
-        #self.__to_train  = pd.read_csv("mov.csv")
-        #self.__to_train.to_csv("mv.csv")
-        
-        print(self.__user_id)
+
 
     # prediction stats if dataset doesnt had genre
     #     
@@ -696,7 +693,7 @@ class DataSet:
 
         without_user_reviews = self.__to_train.loc[~self.__to_train["item_id"].isin(user_reviews)][["item_id","name","genre"]].drop_duplicates()
 
-        # if dataset is tooo big it brings just first 1M elements
+        # if dataset is to big it brings just first 1M elements
 
         without_user_reviews =  without_user_reviews.head(1000000)
 
@@ -744,14 +741,6 @@ class DataSet:
 
         dataset = dataset.groupby("predictions").count()
 
-        #ax = dataset.item_id.plot.bar()
-
-        #ax.set_xlabel("range of prediction")
-        #ax.set_ylabel("number of items")
-        #plt.tight_layout()
-        
-        #fig.savefig(filename, figsize=(100, 100))
-
         return dataset
 
     # results from finding hyperparams
@@ -774,8 +763,6 @@ class DataSet:
         counts = []
         dc = self.dataset["rating"].value_counts().to_dict()
 
-        print(dc)
-
         for key in sorted(dc):
             ratings.append(key)
             counts.append(dc[key])
@@ -785,10 +772,7 @@ class DataSet:
     # statistic from recomendation
 
     def get_tmp(self):
-        #with open("tmp2.pkl", 'wb') as files:
-        #    pickle.dump(self.hyperparams_results, files)
         self.__to_train.to_csv('mv.csv')
-        print(self.__user_id)
         return  self.hyperparams_results
 
     # statistic from recomendation
@@ -850,8 +834,7 @@ class DataSet:
 
     def find_predictions_user(self, model=None, id=None):
         user_reviews = self.__to_train.loc[self.__to_train["user_id"] == self.__user_id]["item_id"].to_list()
-        print(user_reviews)
-        print(type(user_reviews[0]))
+
         if dict(self.__to_train.dtypes)["user_id"] == 'float64':
             copyer_rewiews = self.__to_train.loc[self.__to_train["user_id"] == float(id)]
             user_reviews = list(map(float, user_reviews))
