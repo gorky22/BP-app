@@ -661,7 +661,7 @@ class DataSet:
 
     # prediction stats if dataset doesnt had genre
     #     
-    def find_predictions(self,path, model=None, alg=None):
+    def find_predictions(self, model=None, alg=None):
         user_reviews = self.__to_train.loc[self.__to_train["user_id"] == self.__user_id]["item_id"].to_list()
 
         without_user_reviews = self.__to_train.loc[~self.__to_train["item_id"].isin(user_reviews)][["item_id","name"]].drop_duplicates()
@@ -675,7 +675,7 @@ class DataSet:
 
         without_user_reviews.to_pickle("predictions_pkl")
         top_10 = without_user_reviews.sort_values(by="predictions", ascending=False).head(10)
-        rated = self.make_stats_predictions(without_user_reviews,path)
+        rated = self.make_stats_predictions(without_user_reviews)
 
         top_10 = [[a]+[b] for a,b in zip(top_10.name.to_list() ,top_10.predictions.to_list())]
 
@@ -691,7 +691,7 @@ class DataSet:
 
     # prediction stats if dataset had genre
 
-    def find_predictions_genre(self,path, model=None, alg=None):
+    def find_predictions_genre(self, model=None, alg=None):
         user_reviews = self.__to_train.loc[self.__to_train["user_id"] == self.__user_id]["item_id"].to_list()
 
         without_user_reviews = self.__to_train.loc[~self.__to_train["item_id"].isin(user_reviews)][["item_id","name","genre"]].drop_duplicates()
@@ -705,7 +705,7 @@ class DataSet:
 
         
         top_10 = without_user_reviews.sort_values(by="predictions", ascending=False).head(10)
-        rated = self.make_stats_predictions(without_user_reviews,path)
+        rated = self.make_stats_predictions(without_user_reviews)
         without_user_reviews.to_pickle("predictions_pkl")
 
         genres_to_hist, values_to_hist = self.get_data_for_genre_hist(without_user_reviews)
@@ -726,7 +726,7 @@ class DataSet:
 
     # stats for hyper params
 
-    def make_stats_predictions(self, dataset, filename):
+    def make_stats_predictions(self, dataset):
         ranges = []
         fig = plt.figure()
         ax = fig.add_subplot()

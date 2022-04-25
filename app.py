@@ -1,22 +1,16 @@
-from tkinter.font import names
-from tkinter.ttk import Separator
-from flask import Flask, Flask, redirect, url_for, render_template, request, flash
-from flask import send_from_directory, abort, session
-import os
+from flask import Flask, render_template, request, flash, session
 from flask_sqlalchemy import SQLAlchemy
-from numpy import delete
 from sklearn import datasets
 from statistic import DataSet
+import os
 import pandas as pd
-import matplotlib
 import pickle
 import surprise
 import json
 
 app = Flask(__name__)
 
-app.secret_key = "xxxxx"
-app.config["img"]="/Users/damiangorcak/Desktop/BP-app/static/img"
+app.secret_key = "Some random key"
 app.config["SQLALCHEMY_DATABASE_URI"] = 'sqlite:///datasets.sqlite3'
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
@@ -33,24 +27,17 @@ class datasets(db.Model):
     path_to_file = db.Column("path_to_file", db.String(100))
     sparsity = db.Column("sparsity", db.String(100))
     path_img_stats_all = db.Column("path_img_stats_all", db.String(200))
-    path_img_stats_reduced = db.Column("path_img_stats_reduced", db.String(200))
-    path_img_stats_scatter = db.Column("path_img_stats_scatter", db.String(200))
-    path_img_stats_sparsity = db.Column("path_img_stats_sparsity", db.String(200))
-    path_to_img_stats = db.Column("path_to_img_stats", db.String(200))
     path_train_graph = db.Column("path_train_graph", db.String(200))
-    train_steps = db.Column("train_steps", db.Integer)
-    train_lr = db.Column("train_lr", db.Float)
-    train_alg = db.Column("train_alg", db.String(10))
     path_to_model_svd = db.Column("path_to_model_svd", db.String(200))
     path_to_model_sgd = db.Column("path_to_model_sgd", db.String(200))
     path_to_model_als = db.Column("path_to_model_als", db.String(200))
     path_to_dataset = db.Column("path_to_dataset", db.String(200))
-    path_to_img_rated = db.Column("path_to_img_rated", db.String(200))
     had_genre = db.Column("had_genre", db.Boolean, default=False)
     sep = db.Column("sep", db.String(200))
 
-app.config["uploads_dataset"] = "/Users/damiangorcak/Desktop/BP-app/static/datasets"
-app.config['SECRET_KEY'] = 'aaaa'
+app.config["uploads_dataset"] = "static/datasets"
+app.config["saved_models"] = "static/models"
+app.config['SECRET_KEY'] = 'Some random key"'
 user_id = ""
 
 db.create_all()
@@ -58,16 +45,47 @@ db.create_all()
 # dataset is used in all function thats why global
 global dataset
 
-# this function takes alghotitm, trainded model, and database on actual session and save this model to pickle
+# this function takes algorithm, trained model, and database on actual session and save this model to pickle
 # so program can use this model after restarting
 
 def save_model(alg, model, database):
+
+    if not os.path.isdir(app.config["saved_models"]):
+            os.mkdir(app.config["saved_models"]) 
+
     path_model = database.path_to_file.split("datasets/")[0] + "models/" + database.path_to_file.split("datasets/")[1].split(".")[0] + "-" + alg + "_pkl"
     
     with open(path_model, 'wb') as files:
             pickle.dump(model, files)
 
     return path_model
+
+def get_first_element_from_db(database):
+    if len(database) == 0:
+        return None
+    else:
+        return database[0]
+
+def get_dataset():
+
+    if session.get("df") is None:
+        return None, None
+    
+    x = get_first_element_from_db(datasets.query.filter_by(name=session["df"]).all())
+
+    if x is None:
+        return None, None
+
+    global dataset
+    if not "dataset" in globals():
+
+        if os.path.exists(x.path_to_dataset) :
+            return None, None
+
+        with open(x.path_to_dataset, 'rb') as ds:
+            dataset = pickle.load(ds)
+    
+    return dataset, x
 
 @app.route("/")
 def index():
@@ -108,6 +126,10 @@ def save_file(file,name,main=False):
     # dataset with information about item column has different name
 
     if "csv" in file.content_type or "json" in file.content_type:
+        
+        if not os.path.isdir(app.config["uploads_dataset"]):
+            os.mkdir(app.config["uploads_dataset"]) 
+
         if main:
             file.save(app.config["uploads_dataset"] + "/names_" + name )
             return app.config["uploads_dataset"] + "/names_" + name 
@@ -154,7 +176,14 @@ def get_df_and_check_columns(content_type,path_to_file,separator, user_col=None,
                 return None
             else :
                 return df
-        
+
+def delete_wrong_datasets(file_item,file_name=None):
+    
+    if os.path.exists(file_item):
+        os.remove(file_item)
+
+    if file_name is not None and os.path.exists(file_name):
+        os.remove(file_name)
 
 
 @app.route("/upload", methods=["GET", "POST"])
@@ -204,6 +233,7 @@ def upload():
 
 
             path_to_file = save_file(file,file_path)
+
             path_to_file_names = None
             df_names = None
 
@@ -213,6 +243,8 @@ def upload():
                 path_to_file_names = save_file(file_names,file_path,main=True)
 
                 if path_to_file_names is None:
+
+                    delete_wrong_datasets(path_to_file, file_name=path_to_file_names)
                     flash(u'Data are not in csv or json format (dataset with names)', 'error')
                     datasets.query.filter_by(_id=new._id).delete()
                     return render_template("upload.html")
@@ -223,11 +255,15 @@ def upload():
                     df_names = get_df_and_check_columns(file_names.content_type,path_to_file=path_to_file_names,separator=sep,names_col=names_col,name_id=name_id_col)
 
                 if df_names is None:
+
+                    delete_wrong_datasets(path_to_file, file_name=path_to_file_names)
                     datasets.query.filter_by(_id=new._id).delete()
                     flash(u'One or more Entered column names not found in dataset (dataset with names)', 'error')
                     return render_template("upload.html")
 
             if path_to_file is None :
+
+                delete_wrong_datasets(path_to_file, file_name=path_to_file_names)
                 datasets.query.filter_by(_id=new._id).delete()
                 flash(u'Data are not in csv or json format', 'error')
                 return render_template("upload.html")
@@ -247,6 +283,8 @@ def upload():
                 df = get_df_and_check_columns(file.content_type,path_to_file=path_to_file,separator=sep,user_col=user_col,item_col=item_col,rating_col=rating_col)
 
                 if df is None:
+
+                    delete_wrong_datasets(path_to_file, file_name=path_to_file_names)
                     datasets.query.filter_by(_id=new._id).delete()
                     flash(u'One or more Entered column names not found in dataset', 'error')
                     return render_template("upload.html")
@@ -256,6 +294,8 @@ def upload():
                 dataset.save(pkl_path_dataset)
 
             if df is None:
+
+                delete_wrong_datasets(path_to_file, file_name=path_to_file_names)
                 datasets.query.filter_by(_id=new._id).delete()
                 flash(u'One or more Entered column names not found in dataset', 'error')
                 return render_template("upload.html")
@@ -283,59 +323,44 @@ def train():
         return render_template("empty.html", 
                 text="File with data not found ! Please add one in section 'add data'")
     else:
-
         return render_template("train.html")
 
 @app.route("/find_hyperparams", methods=["GET","POST"])
 def find_hyperparams():
 
-
-    global dataset
-
-    x = datasets.query.filter_by(name=session["df"]).all()[0]
-
     if request.method == "POST":
-        if not "dataset" in globals():
-            with open(x.path_to_dataset, 'rb') as ds:
-                dataset = pickle.load(ds)
+        dataset,x = get_dataset()
 
-        #getting data and train model 
-        a = dataset.find_hyperparams(alg=request.form.get("type"))
+        if x is None:
+            return render_template("empty.html", 
+                text="File with data not found ! Please add one in section 'add data'")
 
-        path = x.path_to_file.split("datasets/")[1].split(".")[0] + ".png"
-        x.path_train_graph = "static/train_img/train_" + path
-        
+        # getting data and train model 
+        data = dataset.find_hyperparams(alg=request.form.get("type"))
+
         # save class because new dict is apended
 
         dataset.save(x.path_to_dataset)
         db.session.commit()
 
     
-    return render_template("tmp.html", sgd_time=a["sgd"]["time"],sgd_steps=a["sgd"]["steps"],sgd_lr=a["sgd"]["lr"],
-                                        als_time=a["als"]["time"],als_steps=a["als"]["steps"],als_lr=a["als"]["lr"],
-                                        svd_time=a["svd"]["time"],svd_steps=a["svd"]["steps"],svd_lr=a["svd"]["lr"])
+    return render_template("tmp.html", sgd_time=data["sgd"]["time"],sgd_steps=data["sgd"]["steps"],sgd_lr=data["sgd"]["lr"],
+                                        als_time=data["als"]["time"],als_steps=data["als"]["steps"],als_lr=data["als"]["lr"],
+                                        svd_time=data["svd"]["time"],svd_steps=data["svd"]["steps"],svd_lr=data["svd"]["lr"])
 
 @app.route("/train_model", methods=["GET","POST"])
 def train_model():
 
-    if session.get("df") is None:
-        return render_template("empty.html", 
+    dataset,x = get_dataset()
+
+    if x is None:
+            return render_template("empty.html", 
                 text="File with data not found ! Please add one in section 'add data'")
 
     if request.method == "POST":
 
-        x = datasets.query.filter_by(name=session["df"]).all()[0]
-        
-        global dataset
-
         alg = request.form.get("alg")
-
-        path = x.path_to_file.split("datasets/")[0] + "predicted/" + x.path_to_file.split("datasets/")[1].split(".")[0] + "_" + alg + "_predicted.png"
         
-        if not "dataset" in globals():
-            with open(x.path_to_dataset, 'rb') as ds:
-                dataset = pickle.load(ds)
-
         lr = float(request.form.get("lr"))
 
         # here choodse and train model acording to chosend alghoritm
@@ -359,9 +384,9 @@ def train_model():
         # finding prediction for added data
 
         if x.had_genre:
-            dataset.find_predictions_genre(path, model=model, alg=alg.lower())
+            dataset.find_predictions_genre(model=model, alg=alg.lower())
         else:
-            dataset.find_predictions(path, model=model, alg=alg.lower())
+            dataset.find_predictions(model=model, alg=alg.lower())
 
         results = dataset.get_data_to_render_result(alg=alg.lower())
 
@@ -387,15 +412,56 @@ def train_model():
 
 @app.route("/recomend")
 def recomend():
-    if session.get("df") is None:
-        return render_template("empty.html", 
+    dataset,x = get_dataset()
+
+    if x is None:
+            return render_template("empty.html", 
                 text="File with data not found ! Please add one in section 'add data'")
+
+    if not x.had_genre:
+        min, max, data= dataset.get_items()
+        return render_template("recomend.html",min=min, max=max, data=data)
+    else :
+        min, max, data= dataset.get_items_genre()
+        return render_template("recomend_genre.html",min=min, max=max, data=data)
+
+
+
+@app.route("/make_recomendation",  methods=["POST"])
+def make_recomendation():
+
+    dataset,x = get_dataset()
+
+    if x is None:
+            return render_template("empty.html", 
+                text="File with data not found ! Please add one in section 'add data'")
+
+    alg = None
+    model = None
+
+    if request.form.get("ALS") is not None:
+        alg = "ALS"
+        dataset.make_dat_with_name(json.loads(request.form.get(alg)))
+        model = dataset.train_model_als()
+        x.path_to_model_als = save_model(alg.lower(),model,x)
+
+    elif request.form.get("SVD") is not None:
+        alg = "SVD"
+        dataset.make_dat_with_name(json.loads(request.form.get(alg)))
+        model = dataset.train_model_svd()
+        x.path_to_model_svd = save_model(alg.lower(),model,x)
+
+    elif request.form.get("SGD") is not None:
+        alg = "SGD"
+        
+        dataset.make_dat_with_name(json.loads(request.form.get(alg)))
+        model = dataset.train_model_sgd()
+        x.path_to_model_sgd = save_model(alg.lower(),model,x)
     else:
-        x = datasets.query.filter_by(name=session["df"]).all()[0]
-        global dataset
-        if not "dataset" in globals():
-            with open(x.path_to_dataset, 'rb') as ds:
-                dataset = pickle.load(ds)
+        dataset.make_dat_with_name(json.loads(request.form.get("any")))
+
+        dataset.save(x.path_to_dataset)
+        db.session.commit()
 
         if not x.had_genre:
             min, max, data= dataset.get_items()
@@ -403,77 +469,22 @@ def recomend():
         else :
             min, max, data= dataset.get_items_genre()
             return render_template("recomend_genre.html",min=min, max=max, data=data)
-
-
-
-@app.route("/make_recomendation",  methods=["POST"])
-def make_recomendation():
-
-    if session.get("df") is None:
-        return render_template("empty.html")
+        
+    if x.had_genre:
+        dataset.find_predictions_genre(model=model, alg=alg.lower())
     else:
-        
-        x = datasets.query.filter_by(name=session["df"]).all()[0]
-        global dataset
-        if not "dataset" in globals():
-            with open(x.path_to_dataset, 'rb') as ds:
-                dataset = pickle.load(ds)
+        dataset.find_predictions(model=model, alg=alg.lower())
 
-        alg = None
-        model = None
+    results = dataset.get_data_to_render_result(alg=alg.lower())
 
-        
+    # save class because new dict is apended
 
-        if request.form.get("ALS") is not None:
-            alg = "ALS"
-            dataset.make_dat_with_name(json.loads(request.form.get(alg)))
-            model = dataset.train_model_als()
-            x.path_to_model_als = save_model(alg.lower(),model,x)
+    dataset.save(x.path_to_dataset)
+    db.session.commit()
 
-        elif request.form.get("SVD") is not None:
-            alg = "SVD"
-            dataset.make_dat_with_name(json.loads(request.form.get(alg)))
-            model = dataset.train_model_svd()
-            x.path_to_model_svd = save_model(alg.lower(),model,x)
-
-        elif request.form.get("SGD") is not None:
-            alg = "SGD"
-           
-            dataset.make_dat_with_name(json.loads(request.form.get(alg)))
-            model = dataset.train_model_sgd()
-            x.path_to_model_sgd = save_model(alg.lower(),model,x)
-        else:
-            dataset.make_dat_with_name(json.loads(request.form.get("any")))
-
-            dataset.save(x.path_to_dataset)
-            db.session.commit()
-
-            if not x.had_genre:
-                min, max, data= dataset.get_items()
-                return render_template("recomend.html",min=min, max=max, data=data)
-            else :
-                min, max, data= dataset.get_items_genre()
-                return render_template("recomend_genre.html",min=min, max=max, data=data)
-            
-
-        path = x.path_to_file.split("datasets/")[0] + "predicted/" + x.path_to_file.split("datasets/")[1].split(".")[0] + "_" + alg + "_predicted.png"
-
-        #print("data: ")
-        if x.had_genre:
-            dataset.find_predictions_genre(path, model=model, alg=alg.lower())
-        else:
-            dataset.find_predictions(path, model=model, alg=alg.lower())
-
-        results = dataset.get_data_to_render_result(alg=alg.lower())
-
-        # save class because new dict is apended
-
-        dataset.save(x.path_to_dataset)
-        db.session.commit()
-
-        if results is None:
-            return render_template("empty.html",
-                        text="Trained model is not found, for this algorithm")
+    if results is None:
+        return render_template("empty.html",
+                    text="Trained model is not found, for this algorithm")
 
         
 
@@ -485,22 +496,15 @@ def make_recomendation():
         return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], 
                             ranges=results["ranges"], values=results["values"])
 
-@app.route("/als_results")
-def als_results():
-    x = datasets.query.filter_by(name=session["df"]).all()[0]
-    global dataset
-    if not "dataset" in globals():
-        with open(x.path_to_dataset, 'rb') as ds:
-            dataset = pickle.load(ds)
-    
-    results = dataset.get_data_to_render_result(alg="als")
-    #print(results)
+def get_results(data, alg):
+
+    results = dataset.get_data_to_render_result(alg=alg)
         
     if results is None:
         return render_template("empty.html",
                         text="Trained model is not found, for this algorithm")
     else:
-        if x.had_genre:
+        if data.had_genre:
             return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
                             ranges=results["ranges"], values=results["values"],genres_hist=results["genres_hist"],
                             values_hist=results["values_hist"])
@@ -508,64 +512,53 @@ def als_results():
             return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], 
                             ranges=results["ranges"], values=results["values"])
 
+@app.route("/als_results")
+def als_results():
+    dataset,x = get_dataset()
+
+    if x is None:
+            return render_template("empty.html", 
+                text="File with data not found ! Please add one in section 'add data'")
+
+    return get_results(x, "als")
+    
 @app.route("/sgd_results")
 def sgd_results():
-    x = datasets.query.filter_by(name=session["df"]).all()[0]
-    global dataset
-    if not "dataset" in globals():
-        with open(x.path_to_dataset, 'rb') as ds:
-            dataset = pickle.load(ds)
     
-    
-    results = dataset.get_data_to_render_result(alg="sgd")
+    dataset,x = get_dataset()
 
-    if results is None:
-        return render_template("empty.html",
-                        text="Trained model is not found, for this algorithm")
-    else:
-        if x.had_genre:
-            return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
-                            ranges=results["ranges"], values=results["values"],genres_hist=results["genres_hist"],
-                            values_hist=results["values_hist"])
-        else:
-            return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], 
-                            ranges=results["ranges"], values=results["values"])
+    if x is None:
+            return render_template("empty.html", 
+                text="File with data not found ! Please add one in section 'add data'")
+    
+    return get_results(x, "sgd")
 
 @app.route("/svd_results")
 def svd_results():
-    x = datasets.query.filter_by(name=session["df"]).all()[0]
-    global dataset
-    if not "dataset" in globals():
-        with open(x.path_to_dataset, 'rb') as ds:
-            dataset = pickle.load(ds)
+
+    dataset,x = get_dataset()
+
+    if x is None:
+            return render_template("empty.html", 
+                text="File with data not found ! Please add one in section 'add data'")
     
-    results = dataset.get_data_to_render_result(alg="svd")
-    if results is None:
-        return render_template("empty.html",
-                        text="Trained model is not found, for this algorithm")
-    else:
-        if x.had_genre:
-            return render_template("predictions_genre.html",top_10 = results["top_10"], rated=results["rated"], 
-                            ranges=results["ranges"], values=results["values"],genres_hist=results["genres_hist"],
-                            values_hist=results["values_hist"])
-        else:
-            return render_template("predictions.html",top_10 = results["top_10"], rated=results["rated"], 
-                            ranges=results["ranges"], values=results["values"])
+    return get_results(x, "svd")
 
 @app.route("/charts")
 def charts():
-    x = datasets.query.filter_by(name=session["df"]).all()[0]
-    global dataset
-    if not "dataset" in globals():
-        with open(x.path_to_dataset, 'rb') as ds:
-            dataset = pickle.load(ds)
+
+    dataset,x = get_dataset()
+
+    if x is None:
+            return render_template("empty.html", 
+                text="File with data not found ! Please add one in section 'add data'")
 
     if x.sparsity is None:
         x.sparsity = '{:.2f}%'.format(dataset.sparsity())
 
     df = dataset.ratings_graph(all=True,scatter=True,reduced=True)
     ratings, counts = dataset.get_counts()
-    #print(df)
+
     return render_template("charts.html",item_reduced=df["item_reduced"], 
                                          user_reduced=df["user_reduced"],
                                          user_all_user=df["user_all"]["user"],
@@ -576,58 +569,47 @@ def charts():
                                          ratings=ratings,
                                          counts=counts,
                                          x=x
-                                         )
+                            )
 
 @app.route("/tmp")
 def tmp():
 
-    if session.get("df") is None:
-        return render_template("empty.html", 
+    dataset,x = get_dataset()
+
+    if x is None:
+            return render_template("empty.html", 
                 text="File with data not found ! Please add one in section 'add data'")
-
-    x = datasets.query.filter_by(name=session["df"]).all()[0]
-    global dataset
-    if not "dataset" in globals():
-        with open(x.path_to_dataset, 'rb') as ds:
-            dataset = pickle.load(ds)
     
-    a = dataset.get_tmp()
+    data = dataset.get_tmp()
 
-    if a["sgd"]["time"] == None and a["als"]["time"] == None and a["svd"]["time"] == None:
+    if data["sgd"]["time"] == None and data["als"]["time"] == None and data["svd"]["time"] == None:
         return render_template("empty.html",
                         text="not found any stats! try it in section --Find hyperparams--")
  
-    return render_template("tmp.html", sgd_time=a["sgd"]["time"],sgd_steps=a["sgd"]["steps"],sgd_lr=a["sgd"]["lr"],
-                                        als_time=a["als"]["time"],als_steps=a["als"]["steps"],als_lr=a["als"]["lr"],
-                                        svd_time=a["svd"]["time"],svd_steps=a["svd"]["steps"],svd_lr=a["svd"]["lr"])
+    return render_template("tmp.html", sgd_time=data["sgd"]["time"],sgd_steps=data["sgd"]["steps"],sgd_lr=data["sgd"]["lr"],
+                                        als_time=data["als"]["time"],als_steps=data["als"]["steps"],als_lr=data["als"]["lr"],
+                                        svd_time=data["svd"]["time"],svd_steps=data["svd"]["steps"],svd_lr=data["svd"]["lr"])
 
 @app.route("/another_user_ratings")
 def another_user_ratings():
-    if session.get("df") is None:
-        return render_template("empty.html", 
-                text="File with data not found ! Please add one in section 'add data'")
-    else:
-        x = datasets.query.filter_by(name=session["df"]).all()[0]
-        global dataset
-        if not "dataset" in globals():
-            with open(x.path_to_dataset, 'rb') as ds:
-                dataset = pickle.load(ds)
 
-        return render_template("get_id.html", data=dataset.get_top_ids())
+    dataset,x = get_dataset()
+
+    if x is None:
+            return render_template("empty.html", 
+                text="File with data not found ! Please add one in section 'add data'")
+    
+    return render_template("get_id.html", data=dataset.get_top_ids())
 
 @app.route("/delete")
 def delete():
 
-    if session.get("df") is None:
-        return render_template("empty.html", 
+    dataset,x = get_dataset()
+
+    if x is None:
+            return render_template("empty.html", 
                 text="File with data not found ! Please add one in section 'add data'")
 
-    x = datasets.query.filter_by(name=session["df"]).all()[0]
-    global dataset
-    if not "dataset" in globals():
-        with open(x.path_to_dataset, 'rb') as ds:
-            dataset = pickle.load(ds)
-    
     dataset.delete_user_ratings()
 
     return render_template("empty.html",
@@ -639,11 +621,13 @@ def render_another_user():
     id = request.form['user_id']
     global user_id
     user_id = id
-    x = datasets.query.filter_by(name=session["df"]).all()[0]
-    global dataset
-    if not "dataset" in globals():
-        with open(x.path_to_dataset, 'rb') as ds:
-            dataset = pickle.load(ds)
+    
+    dataset,x = get_dataset()
+
+    if x is None:
+            return render_template("empty.html", 
+                text="File with data not found ! Please add one in section 'add data'")
+  
 
     min, max, data= dataset.get_users_ratings(id)
    
@@ -651,53 +635,45 @@ def render_another_user():
 
 @app.route("/make_for_user",  methods=["POST"])
 def make_for_user():
+        
+    dataset,x = get_dataset()
 
-    if session.get("df") is None:
-        return render_template("empty.html")
+    if x is None:
+            return render_template("empty.html", 
+                text="File with data not found ! Please add one in section 'add data'")
+
+    alg = None
+    model = None
+    global user_id
+    id = user_id
+    
+    if request.form.get("ALS") is not None:
+        alg = "ALS"
+        dataset.make_dat_with_name(json.loads(request.form.get(alg)))
+        model = dataset.train_model_als()
+
+    elif request.form.get("SVD") is not None:
+        alg = "SVD"
+        dataset.make_dat_with_name(json.loads(request.form.get(alg)))
+        model = dataset.train_model_svd()
+        x.path_to_model_svd = save_model(alg.lower(),model,x)
+
+    elif request.form.get("SGD") is not None:
+        alg = "SGD"
+        
+        dataset.make_dat_with_name(json.loads(request.form.get(alg)))
+        model = dataset.train_model_sgd()
+        x.path_to_model_sgd = save_model(alg.lower(),model,x)
     else:
+        dataset.make_dat_with_name(json.loads(request.form.get("any")))
+
+        dataset.save(x.path_to_dataset)
+        db.session.commit()
+
+        min, max, data= dataset.get_users_ratings(id)
+        return render_template("recomend_user.html",min=min, max=max, data=data)
         
-        x = datasets.query.filter_by(name=session["df"]).all()[0]
-        global dataset
-        if not "dataset" in globals():
-            with open(x.path_to_dataset, 'rb') as ds:
-                dataset = pickle.load(ds)
-
-        alg = None
-        model = None
-        global user_id
-        id = user_id
-        
-        if request.form.get("ALS") is not None:
-            alg = "ALS"
-            dataset.make_dat_with_name(json.loads(request.form.get(alg)))
-            model = dataset.train_model_als()
-
-        elif request.form.get("SVD") is not None:
-            alg = "SVD"
-            dataset.make_dat_with_name(json.loads(request.form.get(alg)))
-            model = dataset.train_model_svd()
-            x.path_to_model_svd = save_model(alg.lower(),model,x)
-
-        elif request.form.get("SGD") is not None:
-            alg = "SGD"
-           
-            dataset.make_dat_with_name(json.loads(request.form.get(alg)))
-            model = dataset.train_model_sgd()
-            x.path_to_model_sgd = save_model(alg.lower(),model,x)
-        else:
-            dataset.make_dat_with_name(json.loads(request.form.get("any")))
-
-            dataset.save(x.path_to_dataset)
-            db.session.commit()
-
-            min, max, data= dataset.get_users_ratings(id)
-            return render_template("recomend_user.html",min=min, max=max, data=data)
-            
-
-        path = x.path_to_file.split("datasets/")[0] + "predicted/" + x.path_to_file.split("datasets/")[1].split(".")[0] + "_" + alg + "_predicted.png"
-       
-
-        name,orig,predict,rmse = dataset.find_predictions_user(model=model, id=id)
+    name,orig,predict,rmse = dataset.find_predictions_user(model=model, id=id)
         
     data = [orig,name,predict]
 
